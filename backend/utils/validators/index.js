@@ -11,7 +11,9 @@
  * bersih + sudah dikonversi disimpan di `req.validated`.
  */
 
-const { ApiError } = require('../ApiError');
+// ApiError.js mengekspor class secara langsung (module.exports = ApiError),
+// jadi harus di-require tanpa destructuring.
+const ApiError = require('../ApiError');
 
 // ---------------------------------------------------------------------------
 // Validator dasar

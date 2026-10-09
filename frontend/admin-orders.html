@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pesanan - Smart Restaurant</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">SR</span>
+      <span>Pesanan</span>
+    </div>
+    <div class="appbar__user">
+      <span id="user-label"></span>
+      <button type="button" class="btn btn--ghost btn--small" id="logout-button">Keluar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container container--wide">
+      <div class="page-header">
+        <div class="page-header__title">
+          <h1>Daftar Pesanan</h1>
+          <p class="page-header__subtitle">Riwayat dan status seluruh transaksi.</p>
+        </div>
+        <div class="page-header__actions">
+          <input class="input" type="search" id="search-input" placeholder="Cari nomor/meja..."
+                 style="width: 200px;" />
+          <select class="select" id="status-filter" style="width: 170px;">
+            <option value="">Semua status</option>
+            <option value="PENDING">Menunggu</option>
+            <option value="CONFIRMED">Dikonfirmasi</option>
+            <option value="PREPARING">Sedang Dimasak</option>
+            <option value="READY">Siap Diantar</option>
+            <option value="COMPLETED">Selesai</option>
+            <option value="CANCELLED">Dibatalkan</option>
+          </select>
+          <select class="select" id="source-filter" style="width: 130px;">
+            <option value="">Semua sumber</option>
+            <option value="QR">QR</option>
+            <option value="POS">POS</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__body card__body--flush">
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Nomor</th>
+                  <th>Waktu</th>
+                  <th>Meja</th>
+                  <th>Sumber</th>
+                  <th class="num">Item</th>
+                  <th class="num">Total</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="order-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/admin-orders.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

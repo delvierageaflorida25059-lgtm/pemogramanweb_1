@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Restaurant Management</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">SR</span>
+      <span>Smart Restaurant</span>
+    </div>
+    <div class="appbar__nav" id="appbar-nav"></div>
+    <div class="appbar__user">
+      <span id="user-label"></span>
+      <button type="button" class="btn btn--ghost btn--small" id="logout-button" hidden>Keluar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container">
+      <section class="stack">
+        <div>
+          <h1 id="page-title">Pilih Modul</h1>
+          <p class="muted" id="page-subtitle">
+            Silakan masuk untuk mengakses modul yang sesuai dengan peran Anda.
+          </p>
+        </div>
+
+        <div id="role-cards" class="role-grid"></div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="/js/index.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

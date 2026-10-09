@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kitchen Display - Smart Restaurant</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">D</span>
+      <span>Kitchen Display</span>
+    </div>
+
+    <div class="appbar__user">
+      <span class="socket-indicator" id="socket-indicator"></span>
+      <span id="clock" class="mono"></span>
+      <button type="button" class="btn btn--ghost btn--small" id="logout-button">Keluar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container container--wide">
+      <div class="page-header">
+        <div class="page-header__title">
+          <h1>Papan Pesanan</h1>
+          <p class="page-header__subtitle">
+            Klik tombol aksi pada setiap tiket untuk memindahkan tahap pesanan.
+          </p>
+        </div>
+        <div class="page-header__actions">
+          <button type="button" class="btn btn--outline" id="refresh-button">Muat ulang</button>
+        </div>
+      </div>
+
+      <div class="kitchen-board" id="board"></div>
+    </div>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/js/kitchen.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

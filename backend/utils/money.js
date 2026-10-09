@@ -103,9 +103,11 @@ function calculateLineTotal(item) {
  * @param {number} [options.serviceChargePercent=0]
  */
 function calculateOrderTotals(items, options = {}) {
+  // toNumber sudah menangani nilai null/undefined/NaN, jadi baris yang tidak
+  // valid ikut diabaikan alih-alih membuat fungsi melempar error.
   const subtotal = round(
     (Array.isArray(items) ? items : []).reduce(
-      (sum, item) => sum + toNumber(item.lineTotal),
+      (sum, item) => sum + toNumber(item?.lineTotal),
       0
     )
   );

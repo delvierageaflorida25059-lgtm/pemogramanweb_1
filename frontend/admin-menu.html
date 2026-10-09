@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kelola Menu - Smart Restaurant</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">SR</span>
+      <span>Kelola Menu</span>
+    </div>
+    <div class="appbar__user">
+      <span id="user-label"></span>
+      <button type="button" class="btn btn--ghost btn--small" id="logout-button">Keluar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container container--wide">
+      <div class="tabs">
+        <button class="tab tab--active" data-tab="categories">Kategori</button>
+        <button class="tab" data-tab="products">Produk</button>
+      </div>
+
+      <!-- Tab: Kategori -->
+      <section id="tab-categories" class="tab-panel tab-panel--active">
+        <div class="page-header">
+          <div class="page-header__title">
+            <h1>Kategori Menu</h1>
+            <p class="page-header__subtitle">Kelompokkan produk agar mudah dicari pelanggan.</p>
+          </div>
+          <div class="page-header__actions">
+            <button type="button" class="btn btn--primary" id="new-category-button">+ Kategori</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__body card__body--flush">
+            <div class="table-wrapper">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Nama</th>
+                    <th>Deskripsi</th>
+                    <th class="num">Produk</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="category-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab: Produk -->
+      <section id="tab-products" class="tab-panel">
+        <div class="page-header">
+          <div class="page-header__title">
+            <h1>Daftar Produk</h1>
+            <p class="page-header__subtitle">Kelola harga, varian, dan addon setiap produk.</p>
+          </div>
+          <div class="page-header__actions">
+            <input class="input" type="search" id="product-search" placeholder="Cari produk/kode..."
+                   style="width: 200px;" />
+            <select class="select" id="category-filter" style="width: 180px;">
+              <option value="">Semua kategori</option>
+            </select>
+            <button type="button" class="btn btn--primary" id="new-product-button">+ Produk</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__body card__body--flush">
+            <div class="table-wrapper">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Kode</th>
+                    <th>Nama Produk</th>
+                    <th>Kategori</th>
+                    <th class="num">Harga</th>
+                    <th class="num">Varian</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="product-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="pagination" id="product-pagination"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="/js/admin-menu.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

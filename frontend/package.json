@@ -1,0 +1,11 @@
+{
+  "name": "smart-restaurant-frontend",
+  "version": "1.0.0",
+  "description": "Frontend PWA - HTML, CSS, dan Vanilla JavaScript (ES Module)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check js/api.js"
+  },
+  "license": "MIT"
+}

@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const { wrapRouter } = require('../utils/asyncHandler');
 const router = express.Router();
 
 const authRoutes = require('./auth.routes');
@@ -19,22 +20,34 @@ const miscRoutes = require('./misc.routes');
  *
  * Prefix `/api` sudah dipasang di app.js, jadi setiap route di bawah ditulis
  * relatif terhadap prefix tersebut.
+ *
+ * CATATAN PENTING
+ * wrapRouter() harus dipanggil pada SETIAP sub-router SEBELUM di-mount.
+ * Express tidak mewarisi stack handler dari router anak ke router induk,
+ * jadi membungkus router utama saja tidak akan mengubah apa pun. Tanpa
+ * langkah ini, setiap error dari controller async akan menggantung request.
  */
-router.use('/auth', authRoutes);
-router.use('/users', userRoutes);
+
+/** Bungkus sub-router lalu pasang ke path-nya. */
+function mount(prefix, subRouter) {
+  router.use(prefix, wrapRouter(subRouter));
+}
+
+mount('/auth', authRoutes);
+mount('/users', userRoutes);
 
 // Modul untuk halaman pelanggan (QR) tidak butuh login.
-router.use('/menu', menuRoutes);
-router.use('/tables', tableRoutes);
+mount('/menu', menuRoutes);
+mount('/tables', tableRoutes);
 
 // Modul operasional butuh login; masing-masing route sudah memasang
 // requirePermission yang sesuai.
-router.use('/categories', categoryRoutes);
-router.use('/products', productRoutes);
-router.use('/orders', orderRoutes);
-router.use('/payments', paymentRoutes);
-router.use('/kitchen', kitchenRoutes);
-router.use('/notifications', miscRoutes);
-router.use('/dashboard', miscRoutes);
+mount('/categories', categoryRoutes);
+mount('/products', productRoutes);
+mount('/orders', orderRoutes);
+mount('/payments', paymentRoutes);
+mount('/kitchen', kitchenRoutes);
+mount('/notifications', miscRoutes);
+mount('/dashboard', miscRoutes);
 
 module.exports = router;

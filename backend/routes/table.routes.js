@@ -23,6 +23,17 @@ router.use(requireAuth);
 /** GET /api/tables/qr/list */
 router.get('/qr/list', requirePermission('table.qr'), tableController.listQr);
 
+/**
+ * GET /api/tables/:id/qr.png
+ * Didaftarkan sebelum "/:id" agar path "/:id/qr.png" tidak tertangkap sebagai id.
+ */
+router.get(
+  '/:id/qr.png',
+  requirePermission('table.qr'),
+  validate({ width: { type: 'integer', min: 120, max: 1200 } }),
+  tableController.qrImage
+);
+
 /** GET /api/tables */
 router.get(
   '/',

@@ -1,6 +1,7 @@
 'use strict';
 
 const tableService = require('../services/table.service');
+const qrService = require('../services/qr.service');
 const ApiError = require('../utils/ApiError');
 const { ok } = require('../utils/response');
 const { setAudit } = require('../middleware/audit');
@@ -83,6 +84,38 @@ async function regenerateQr(req, res) {
   return ok(res, { data: qr, message: 'QR code baru berhasil diterbitkan.' });
 }
 
+/**
+ * GET /api/tables/:id/qr.png  -> file gambar PNG
+ *
+ * Mengembalikan gambar, bukan JSON, supaya bisa langsung dipakai sebagai
+ * <img src> maupun diunduh.
+ */
+async function qrImage(req, res) {
+  const id = Number(req.params.id);
+  const table = await tableService.findById(id);
+  if (!table || !table.qr) {
+    throw ApiError.notFound('QR untuk meja ini belum tersedia.');
+  }
+
+  const payload = qrService.forTable({
+    tableCode: table.code,
+    tableName: table.name,
+    token: table.qr.token,
+  });
+
+  const width = Math.min(
+    1200,
+    Math.max(120, Number.parseInt(req.query.width, 10) || 320)
+  );
+
+  const buffer = await qrService.toBuffer(payload.url, { width, type: 'png' });
+
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Content-Length', buffer.length);
+  res.setHeader('Cache-Control', 'private, max-age=300');
+  res.end(buffer);
+}
+
 /** GET /api/tables/qr/list -> semua QR aktif untuk dicetak */
 async function listQr(_req, res) {
   const codes = await tableService.listActiveQrCodes();
@@ -125,6 +158,7 @@ module.exports = {
   update,
   remove,
   regenerateQr,
+  qrImage,
   listQr,
   resolveToken,
 };

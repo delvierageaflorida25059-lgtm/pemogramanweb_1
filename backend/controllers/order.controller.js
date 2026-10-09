@@ -87,6 +87,15 @@ async function track(req, res) {
       orderNumber: full.orderNumber,
       status: full.status,
       tableCode: full.tableCode,
+      // Rincian nilai ikut dikirim supaya pelanggan bisa melihat rincian
+      // pajak dan service charge tanpa perlu endpoint internal.
+      subtotal: full.subtotal,
+      discountPercent: full.discountPercent,
+      discountAmount: full.discountAmount,
+      taxPercent: full.taxPercent,
+      taxAmount: full.taxAmount,
+      serviceChargePercent: full.serviceChargePercent,
+      serviceChargeAmount: full.serviceChargeAmount,
       total: full.total,
       paidAmount: full.paidAmount,
       balanceDue: full.balanceDue,

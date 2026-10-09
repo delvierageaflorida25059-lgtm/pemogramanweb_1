@@ -3,7 +3,7 @@
 const { nanoid } = require('nanoid');
 const { query } = require('../config/database');
 const ApiError = require('../utils/ApiError');
-const config = require('../config/env');
+const qrService = require('./qr.service');
 
 /**
  * Service meja restoran dan QR code-nya.
@@ -199,10 +199,11 @@ async function issueQr(tableId, label = null) {
 
 /**
  * URL yang dipindai pelanggan.
+ * Dibuat oleh qr.service supaya format URL dan file QR selalu sama.
  * @param {string} token
  */
 function buildQrUrl(token) {
-  return `${config.publicBaseUrl}/menu.html?token=${token}`;
+  return qrService.buildUrl(null, token);
 }
 
 /**

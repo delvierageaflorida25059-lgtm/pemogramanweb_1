@@ -33,11 +33,21 @@ function signAccessToken(user) {
   };
 }
 
-/** @returns {string} refresh token berformat JWT */
+/**
+ * Refresh token.
+ *
+ * Field `jti` (JWT ID) WAJIB diacak. Tanpa itu, dua login dalam detik yang
+ * sama menghasilkan token yang identik piksel demi piksel (payload, iat, dan
+ * exp sama), sehingga hash-nya bentrok di kolom UNIQUE refresh_tokens.
+ *
+ * @returns {string}
+ */
 function signRefreshToken(userId) {
-  return jwt.sign({ sub: String(userId), type: 'refresh' }, config.jwt.refreshSecret, {
-    expiresIn: config.jwt.refreshExpiresIn,
-  });
+  return jwt.sign(
+    { sub: String(userId), type: 'refresh', jti: crypto.randomUUID() },
+    config.jwt.refreshSecret,
+    { expiresIn: config.jwt.refreshExpiresIn }
+  );
 }
 
 /**

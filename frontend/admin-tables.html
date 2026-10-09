@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meja &amp; QR Code - Smart Restaurant</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">SR</span>
+      <span>Meja &amp; QR Code</span>
+    </div>
+    <div class="appbar__user">
+      <span id="user-label"></span>
+      <button type="button" class="btn btn--ghost btn--small" id="logout-button">Keluar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container container--wide">
+      <div class="tabs">
+        <button class="tab tab--active" data-tab="tables">Daftar Meja</button>
+        <button class="tab" data-tab="qr">QR Codes</button>
+      </div>
+
+      <!-- Tab: Meja -->
+      <section id="tab-tables" class="tab-panel tab-panel--active">
+        <div class="page-header">
+          <div class="page-header__title">
+            <h1>Daftar Meja</h1>
+            <p class="page-header__subtitle">
+              Setiap meja punya QR code yang bisa dipindai pelanggan untuk memesan.
+            </p>
+          </div>
+          <div class="page-header__actions">
+            <button type="button" class="btn btn--primary" id="new-table-button">+ Meja Baru</button>
+          </div>
+        </div>
+
+        <div class="grid grid--4" id="table-grid"></div>
+      </section>
+
+      <!-- Tab: QR -->
+      <section id="tab-qr" class="tab-panel">
+        <div class="page-header">
+          <div class="page-header__title">
+            <h1>QR Code Meja</h1>
+            <p class="page-header__subtitle">
+              Cetak QR dan tempel di meja. QR hanya membawa token meja, bukan harga,
+              sehingga perubahan menu tidak membuat QR lama kedaluwarsa.
+            </p>
+          </div>
+          <div class="page-header__actions">
+            <button type="button" class="btn btn--outline" id="print-qr-button">Cetak Semua</button>
+          </div>
+        </div>
+
+        <div class="qr-grid" id="qr-grid"></div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="/js/admin-tables.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lacak Pesanan - Smart Restaurant</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">SR</span>
+      <a href="/menu.html" class="appbar__link">← Menu</a>
+    </div>
+    <div class="socket-indicator" title="Status koneksi realtime"></div>
+  </header>
+
+  <main class="main">
+    <div class="container container--mid">
+      <div class="stack">
+        <div class="text-center">
+          <h1>Lacak Pesanan</h1>
+          <p class="muted" id="order-meta">Memasukkan status...</p>
+        </div>
+
+        <div class="card">
+          <div class="card__body">
+            <div class="progress" id="progress"></div>
+
+            <div id="order-body"></div>
+          </div>
+        </div>
+
+        <div class="card" id="search-card">
+          <div class="card__header">
+            <span class="card__title">Cari Pesanan Lain</span>
+          </div>
+          <div class="card__body">
+            <form id="search-form" class="row">
+              <input class="input" type="text" id="order-number-input"
+                     placeholder="Contoh: ORD-20261008-00001" style="flex: 1;" />
+              <button type="submit" class="btn btn--outline">Cari</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/order.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

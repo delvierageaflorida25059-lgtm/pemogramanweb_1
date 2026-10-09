@@ -1,0 +1,54 @@
+{
+  "name": "Smart Restaurant Management System",
+  "short_name": "Restoran",
+  "description": "Sistem manajemen restoran: QR ordering, POS, kitchen display, menu, dan laporan.",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#faf7f2",
+  "theme_color": "#b45309",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["business", "food", "productivity"],
+  "icons": [
+    {
+      "src": "/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Kasir / POS",
+      "short_name": "Kasir",
+      "url": "/cashier.html",
+      "description": "Buka mesin kasir"
+    },
+    {
+      "name": "Kitchen Display",
+      "short_name": "Dapur",
+      "url": "/kitchen.html",
+      "description": "Buka papan pesanan dapur"
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard.html",
+      "description": "Lihat ringkasan penjualan"
+    }
+  ]
+}

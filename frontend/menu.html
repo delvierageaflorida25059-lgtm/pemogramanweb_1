@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menu - Smart Restaurant</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">SR</span>
+      <span>Menu</span>
+    </div>
+    <div class="appbar__user" id="table-info"></div>
+    <div class="row">
+      <a href="/order.html" class="appbar__link" id="track-link" hidden>Lacak Pesanan</a>
+      <a href="/cart.html" class="btn btn--primary btn--small" id="cart-button">
+        Keranjang (<span id="cart-count">0</span>)
+      </a>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container">
+      <div class="stack">
+        <div id="banner"></div>
+
+        <div class="tabs" id="category-tabs"></div>
+
+        <div>
+          <div class="row row--between" style="margin-bottom: 0.75rem;">
+            <h2 id="category-title" style="margin: 0;">Semua Menu</h2>
+            <input class="input" type="search" id="search-input" placeholder="Cari menu..."
+                   style="max-width: 240px;" />
+          </div>
+          <div class="menu-grid" id="product-grid"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/menu.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

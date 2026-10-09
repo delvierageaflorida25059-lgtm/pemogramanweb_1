@@ -1,6 +1,7 @@
 'use strict';
 
 const { query } = require('../config/database');
+const ApiError = require('../utils/ApiError');
 const orderService = require('./order.service');
 
 /**
@@ -120,7 +121,6 @@ async function attachItems(orders) {
  */
 async function advance(orderId, nextStatus, user = null, note = null) {
   if (!Object.values(NEXT_ACTION).some((action) => action.to === nextStatus)) {
-    const { ApiError } = require('../utils/ApiError');
     throw ApiError.badRequest(
       `Status "${nextStatus}" bukan tahap yang bisa dilakukan dapur.`
     );

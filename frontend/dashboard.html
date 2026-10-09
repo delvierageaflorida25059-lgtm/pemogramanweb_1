@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - Smart Restaurant</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">SR</span>
+      <span>Dashboard</span>
+    </div>
+    <div class="appbar__nav">
+      <a class="appbar__link" href="/cashier.html">Kasir</a>
+      <a class="appbar__link" href="/kitchen.html">Dapur</a>
+      <a class="appbar__link" href="/admin-orders.html">Pesanan</a>
+      <a class="appbar__link" href="/admin-payments.html">Pembayaran</a>
+      <a class="appbar__link" href="/admin-menu.html">Menu</a>
+      <a class="appbar__link" href="/admin-tables.html">Meja</a>
+      <a class="appbar__link" href="/admin-users.html">User</a>
+    </div>
+    <div class="appbar__user">
+      <span id="user-label"></span>
+      <button type="button" class="btn btn--ghost btn--small" id="logout-button">Keluar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container container--wide">
+      <div class="page-header">
+        <div class="page-header__title">
+          <h1>Ringkasan Hari Ini</h1>
+          <p class="page-header__subtitle" id="subtitle">Memuat data...</p>
+        </div>
+        <div class="page-header__actions">
+          <label class="small muted" for="date-input">Tanggal</label>
+          <input class="input" type="date" id="date-input" style="width: auto;" />
+          <button type="button" class="btn btn--outline" id="refresh-button">Muat ulang</button>
+        </div>
+      </div>
+
+      <!-- Kartu statistik -->
+      <div class="stat-grid" id="stats"></div>
+
+      <div class="grid grid--2">
+        <!-- Grafik penjualan per jam -->
+        <section class="card">
+          <div class="card__header">
+            <span class="card__title">Penjualan per Jam</span>
+          </div>
+          <div class="card__body">
+            <div class="bar-chart" id="hourly-chart"></div>
+            <div class="bar-chart__labels" id="hourly-labels"></div>
+          </div>
+        </section>
+
+        <!-- Metode pembayaran -->
+        <section class="card">
+          <div class="card__header">
+            <span class="card__title">Metode Pembayaran</span>
+          </div>
+          <div class="card__body card__body--flush">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Metode</th>
+                    <th class="num">Transaksi</th>
+                    <th class="num">Nilai</th>
+                    <th class="num">Refund</th>
+                  </tr>
+                </thead>
+                <tbody id="payment-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Produk terlaris -->
+      <section class="card" style="margin-top: 1rem;">
+        <div class="card__header">
+          <span class="card__title">Produk Terlaris</span>
+        </div>
+        <div class="card__body card__body--flush">
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Produk</th>
+                  <th class="num">Terjual</th>
+                  <th class="num">Nilai</th>
+                </tr>
+              </thead>
+              <tbody id="bestseller-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Distribusi status order -->
+      <section class="card" style="margin-top: 1rem;">
+        <div class="card__header">
+          <span class="card__title">Status Pesanan</span>
+        </div>
+        <div class="card__body">
+          <div class="row" id="status-breakdown"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="/js/dashboard.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

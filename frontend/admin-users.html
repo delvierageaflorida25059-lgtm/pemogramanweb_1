@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kelola User - Smart Restaurant</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">SR</span>
+      <span>Manajemen User</span>
+    </div>
+    <div class="appbar__user">
+      <span id="user-label"></span>
+      <button type="button" class="btn btn--ghost btn--small" id="logout-button">Keluar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container container--wide">
+      <div class="page-header">
+        <div class="page-header__title">
+          <h1>Manajemen User</h1>
+          <p class="page-header__subtitle">Kelola akun staff, role, dan permission.</p>
+        </div>
+        <div class="page-header__actions">
+          <input class="input" type="search" id="search-input" placeholder="Cari nama/email..."
+                 style="width: 200px;" />
+          <button type="button" class="btn btn--outline" id="refresh-button">Muat ulang</button>
+          <button type="button" class="btn btn--primary" id="new-user-button">+ User Baru</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__body card__body--flush">
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Nama</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Login Terakhir</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="user-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+
+      <!-- Panel role & permission -->
+      <div class="card" style="margin-top: 1.5rem;">
+        <div class="card__header">
+          <span class="card__title">Role &amp; Permission</span>
+          <span class="muted small">Klik Manage Permission untuk mengubah hak akses per role.</span>
+        </div>
+        <div class="card__body card__body--flush">
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>Deskripsi</th>
+                  <th class="num">Permission</th>
+                  <th class="num">User</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="role-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/admin-users.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

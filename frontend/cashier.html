@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kasir / POS - Smart Restaurant</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">SR</span>
+      <span>Kasir / POS</span>
+    </div>
+    <div class="appbar__user">
+      <span id="user-label"></span>
+      <button type="button" class="btn btn--ghost btn--small" id="logout-button">Keluar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container container--wide">
+      <div class="pos-layout">
+        <!-- Kolom kiri: pemilihan produk -->
+        <section>
+          <div class="card" style="margin-bottom: 1rem;">
+            <div class="card__body">
+              <div class="form-row" style="margin-bottom: 0.75rem;">
+                <div class="field" style="margin-bottom: 0;">
+                  <label class="label" for="table-select">Meja</label>
+                  <select class="select" id="table-select"></select>
+                </div>
+                <div class="field" style="margin-bottom: 0;">
+                  <label class="label" for="customer-input">Pelanggan (opsional)</label>
+                  <input class="input" type="text" id="customer-input" maxlength="100"
+                         placeholder="Nama pelanggan" />
+                </div>
+              </div>
+              <div class="row">
+                <input class="input" type="search" id="search-input" placeholder="Cari produk..."
+                       style="flex: 1;" />
+                <button type="button" class="btn btn--outline" id="load-order-button">
+                  Muat Order Meja
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabs" id="category-tabs"></div>
+          <div class="menu-grid" id="product-grid" style="margin-top: 1rem;"></div>
+        </section>
+
+        <!-- Kolom kanan: keranjang + pembayaran -->
+        <aside class="pos-cart card">
+          <div class="card__header">
+            <span class="card__title">Keranjang</span>
+            <button type="button" class="btn btn--ghost btn--small" id="clear-cart">Kosongkan</button>
+          </div>
+
+          <div class="card__body pos-cart__items">
+            <div class="cart-list" id="cart-items"></div>
+          </div>
+
+          <div class="card__footer">
+            <div class="field" style="margin-bottom: 0.5rem;">
+              <label class="label" for="discount-input">Diskon (%)</label>
+              <input class="input" type="number" id="discount-input" min="0" max="100" value="0" />
+            </div>
+
+            <div class="cart-summary">
+              <div class="cart-summary__row">
+                <span>Subtotal</span>
+                <span class="cart-summary__value" id="summary-subtotal">Rp 0</span>
+              </div>
+              <div class="cart-summary__row" id="discount-row" hidden>
+                <span>Diskon</span>
+                <span class="cart-summary__value text-success" id="summary-discount">Rp 0</span>
+              </div>
+              <div class="cart-summary__row">
+                <span>Pajak &amp; Service</span>
+                <span class="cart-summary__value" id="summary-tax">Rp 0</span>
+              </div>
+              <div class="cart-summary__row cart-summary__row--total">
+                <span>Total</span>
+                <span class="cart-summary__value" id="summary-total">Rp 0</span>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn--primary btn--block btn--large"
+                    id="checkout-button" style="margin-top: 0.75rem;" disabled>
+              Bayar
+            </button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/cashier.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

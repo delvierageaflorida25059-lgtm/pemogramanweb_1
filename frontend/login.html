@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Masuk - Smart Restaurant Management</title>
+  <meta name="description" content="Masuk ke sistem manajemen restoran" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="auth-page">
+  <main class="auth-card">
+    <div class="auth-card__brand">
+      <div class="appbar__logo">SR</div>
+      <div>
+        <h1 style="margin: 0; font-size: 1.2rem;">Smart Restaurant</h1>
+        <p class="small muted mb-0">Management System</p>
+      </div>
+    </div>
+
+    <form id="login-form" novalidate>
+      <div class="stack stack--sm">
+        <div class="field">
+          <label class="label" for="email">Email</label>
+          <input class="input" type="email" id="email" name="email"
+                 placeholder="admin@restaurant.test" autocomplete="username" required />
+        </div>
+
+        <div class="field">
+          <label class="label" for="password">Password</label>
+          <input class="input" type="password" id="password" name="password"
+                 placeholder="Masukkan password" autocomplete="current-password" required />
+        </div>
+
+        <div id="form-error" class="field__error" hidden></div>
+
+        <button type="submit" class="btn btn--primary btn--block" id="login-button">
+          Masuk
+        </button>
+      </div>
+    </form>
+
+    <div class="divider"></div>
+
+    <details>
+      <summary class="small muted" style="cursor: pointer;">Akun demo</summary>
+      <div class="table-wrap" style="margin-top: 0.5rem;">
+        <table class="table table--compact">
+          <thead>
+            <tr><th>Peran</th><th>Email</th><th>Password</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Admin</td><td class="mono">admin@restaurant.test</td><td class="mono">Admin123!</td></tr>
+            <tr><td>Manager</td><td class="mono">manager@restaurant.test</td><td class="mono">Manager123!</td></tr>
+            <tr><td>Kasir</td><td class="mono">cashier@restaurant.test</td><td class="mono">Cashier123!</td></tr>
+            <tr><td>Dapur</td><td class="mono">kitchen@restaurant.test</td><td class="mono">Kitchen123!</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="tiny muted" style="margin-top: 0.5rem;">
+        Klik salah satu baris untuk mengisi form secara otomatis.
+      </p>
+    </details>
+
+    <p class="small text-center" style="margin: 1rem 0 0;">
+      <a href="/menu.html">Lihat menu tanpa login</a> ·
+      <a href="/index.html">Kembali</a>
+    </p>
+  </main>
+
+  <script type="module" src="/js/login.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

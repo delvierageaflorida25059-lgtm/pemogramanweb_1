@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pembayaran - Smart Restaurant</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">SR</span>
+      <span>Pembayaran</span>
+    </div>
+    <div class="appbar__user">
+      <span id="user-label"></span>
+      <button type="button" class="btn btn--ghost btn--small" id="logout-button">Keluar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container container--wide">
+      <div class="page-header">
+        <div class="page-header__title">
+          <h1>Riwayat Pembayaran</h1>
+          <p class="page-header__subtitle">
+            Semua transaksi pembayaran beserta nilai refund.
+          </p>
+        </div>
+        <div class="page-header__actions">
+          <input class="input" type="date" id="from-date" style="width: auto;" />
+          <span class="muted small">s.d.</span>
+          <input class="input" type="date" id="to-date" style="width: auto;" />
+          <button type="button" class="btn btn--outline" id="filter-button">Terapkan</button>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="stats"></div>
+
+      <div class="card">
+        <div class="card__body card__body--flush">
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Waktu</th>
+                  <th>Order</th>
+                  <th>Meja</th>
+                  <th>Metode</th>
+                  <th class="num">Nominal</th>
+                  <th class="num">Refund</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="payment-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/js/admin-payments.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>
