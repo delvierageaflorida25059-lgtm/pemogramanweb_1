@@ -1,0 +1,39 @@
+{
+  "name": "smart-restaurant-management",
+  "version": "1.0.0",
+  "description": "Enterprise Smart Restaurant Management System - Node.js + Express + MariaDB/MySQL + Vanilla JS PWA",
+  "main": "backend/server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js",
+    "migrate": "node database/migrate.js",
+    "seed": "node database/seed.js",
+    "reset": "node database/migrate.js --force && node database/seed.js",
+    "test": "node --test tests/",
+    "lint": "node scripts/lint.js"
+  },
+  "keywords": [
+    "restaurant",
+    "pos",
+    "kitchen-display-system",
+    "inventory",
+    "express",
+    "mysql"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.0",
+    "nanoid": "^3.3.7",
+    "socket.io": "^4.7.5"
+  }
+}

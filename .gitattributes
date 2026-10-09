@@ -1,0 +1,19 @@
+# Normalisasi line ending supaya diff tidak berubah-ubah antara Windows dan Linux.
+* text=auto
+
+*.js   text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.md   text eol=lf
+*.sql  text eol=lf
+*.yml  text eol=lf
+
+# File biner tidak boleh diubah line ending.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
