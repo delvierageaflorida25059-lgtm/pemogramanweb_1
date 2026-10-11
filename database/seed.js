@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 /**
  * Seed data awal: role, permission, user, kategori, produk, meja, QR code.
@@ -53,6 +53,9 @@ const PERMISSIONS = [
   ['user.manage', 'User', 'manage', 'Tambah dan ubah user'],
   ['role.view', 'RBAC', 'view', 'Melihat daftar role dan permission'],
   ['role.manage', 'RBAC', 'manage', 'Mengatur role dan permission'],
+  // Inventory (Fase 4)
+  ['inventory.view', 'Inventory', 'view', 'Melihat stok bahan baku dan jurnal mutasi'],
+  ['inventory.manage', 'Inventory', 'manage', 'Mengelola bahan baku, recipe, dan stock opname'],
   // Audit dan notifikasi
   ['audit.view', 'System', 'audit', 'Melihat audit log'],
   ['notification.view', 'System', 'notification', 'Melihat notifikasi'],
@@ -70,7 +73,11 @@ const ROLE_PERMISSIONS = {
     'notification.view',
   ],
   KITCHEN: ['kitchen.view', 'kitchen.process', 'order.view', 'notification.view'],
-  INVENTORY: ['category.view', 'product.view', 'notification.view'],
+  INVENTORY: [
+    'category.view', 'product.view',
+    'inventory.view', 'inventory.manage',
+    'notification.view',
+  ],
   PROCUREMENT: ['category.view', 'product.view', 'notification.view'],
   MANAGER: [
     'category.view', 'product.view',
@@ -78,6 +85,7 @@ const ROLE_PERMISSIONS = {
     'order.view', 'order.cancel',
     'payment.view', 'payment.refund',
     'report.view', 'report.finance',
+    'inventory.view',
     'user.view', 'role.view',
     'audit.view', 'notification.view',
   ],
@@ -89,6 +97,7 @@ const ROLE_PERMISSIONS = {
     'order.view', 'order.cancel',
     'payment.view', 'payment.refund',
     'report.view', 'report.finance',
+    'inventory.view',
     'user.view', 'role.view', 'audit.view', 'notification.view',
   ],
 };
@@ -109,6 +118,7 @@ const USERS = [
   { role: 'MANAGER', emailKey: 'SEED_MANAGER_EMAIL', passwordKey: 'SEED_MANAGER_PASSWORD', nameKey: 'SEED_MANAGER_NAME', fallbackName: 'Manajer Operasional' },
   { role: 'CASHIER', emailKey: 'SEED_CASHIER_EMAIL', passwordKey: 'SEED_CASHIER_PASSWORD', nameKey: 'SEED_CASHIER_NAME', fallbackName: 'Kasir 1' },
   { role: 'KITCHEN', emailKey: 'SEED_KITCHEN_EMAIL', passwordKey: 'SEED_KITCHEN_PASSWORD', nameKey: 'SEED_KITCHEN_NAME', fallbackName: 'Chef Dapur' },
+  { role: 'INVENTORY', emailKey: 'SEED_INVENTORY_EMAIL', passwordKey: 'SEED_INVENTORY_PASSWORD', nameKey: 'SEED_INVENTORY_NAME', fallbackName: 'Staff Inventory' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -165,6 +175,161 @@ const TABLES = [
   { code: 'C02', name: 'Meja C2', zone: 'C', capacity: 10 },
   { code: 'VIP1', name: 'VIP 1', zone: 'VIP', capacity: 6 },
 ];
+
+// ---------------------------------------------------------------------------
+// Data master: bahan baku dan recipe / BOM  (Fase 4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Bahan baku utama restoran.
+ *
+ * Stock awal sengaja dibuat cukup untuk mencoba beberapa dozen order
+ * tanpa langsung menyentuh batas minimum. Stok awal dicatat sebagai mutasi
+ * bertype PURCHASE supaya jurnal dan `ingredients.stock` selalu sinkron -
+ * mengisi kolom stock lewat INSERT atau UPDATE langsung akan membuat keduanya berbeda.
+ */
+const INGREDIENTS = [
+  // [kode, nama, unit, stok awal, stok minimum, harga per unit]
+  //
+  // SATUAN PENTING
+  // Satuan bahan dipakai langsung oleh recipe. Karena itu takaran di recipe
+  // harus memakai satuan yang sama. Contoh: Beras satuannya `kg`, maka
+  // satu porsi nasi goreng memakai 0.150 (kg), bukan 150 (kg).
+  ['BHN-001', 'Beras Pulen', 'kg', 25, 5, 16000],
+  ['BHN-002', 'Telur Ayam', 'pcs', 240, 60, 2800],
+  ['BHN-003', 'Ayam Potong', 'kg', 12, 3, 38000],
+  ['BHN-004', 'Minyak Goreng', 'liter', 8, 2, 18000],
+  ['BHN-005', 'Bumbu Rujak', 'gram', 12000, 3000, 120],
+  ['BHN-006', 'Kecap Manis', 'ml', 10000, 2000, 45],
+  ['BHN-007', 'Mi Instan', 'pack', 40, 10, 3200],
+  ['BHN-008', 'Sayur Kangkung', 'kg', 6, 2, 9000],
+  ['BHN-009', 'Kentang', 'kg', 15, 4, 14000],
+  ['BHN-010', 'Udang Beku', 'gram', 6000, 2000, 420],
+  ['BHN-011', 'Kecap Asin', 'ml', 8000, 2000, 30],
+  ['BHN-012', 'Gula Pasir', 'kg', 5, 1, 17000],
+  ['BHN-013', 'Susu Kental Manis', 'ml', 20000, 6000, 190],
+  ['BHN-014', 'Alpukat', 'pcs', 20, 6, 28000],
+  ['BHN-015', 'Pisang', 'kg', 8, 2, 26000],
+  ['BHN-016', 'Es Krim', 'liter', 10, 3, 32000],
+  ['BHN-017', 'Kentang Beku', 'kg', 10, 3, 13000],
+  ['BHN-018', 'Mayones', 'ml', 6000, 2000, 340],
+  ['BHN-019', 'Keju Cheddar', 'gram', 8000, 2000, 480],
+  ['BHN-020', 'Cokelat Batang', 'gram', 10000, 3000, 290],
+  ['BHN-021', 'Air Mineral Galon', 'bottle', 15, 4, 12000],
+  ['BHN-022', 'Teh Celup', 'pack', 12, 3, 15000],
+  ['BHN-023', 'Biji Kopi', 'gram', 3000, 1000, 950],
+  ['BHN-024', 'Kelapa Muda', 'pcs', 15, 4, 18000],
+  ['BHN-025', 'Ayam Bakar Mentah', 'kg', 10, 3, 40000],
+  ['BHN-026', 'Daging Sapi', 'kg', 8, 2, 145000],
+];
+
+/**
+ * Recipe / BOM per produk.
+ *
+ * key  = kode produk
+ * value = { yield: jumlah porsi per batch, items: [kode bahan, takaran, waste%] }
+ *
+ * Takaran ditulis per SATU-unit yield, bukan per batch. Recipes di bawah
+ * memakai yield 1 supaya angkanya sama persis dengan yang tertulis di
+ * buku resep (mis. Nasi Goreng = 150 gram beras per porsi).
+ */
+const RECIPES = {
+  // key  = kode produk
+  // value = { yield: porsi per batch, items: [kode bahan, takaran per porsi, waste%] }
+  //
+  // SATUAN WAJIB COCOK dengan satuan bahan di INGREDIENTS.
+  // Beras satuannya kg, jadi 0.150 berarti 150 gram.
+  'MKN-001': {
+    // Nasi Goreng Spesial
+    yield: 1,
+    items: [
+      ['BHN-001', 0.15, 2],
+      ['BHN-002', 1, 0],
+      ['BHN-003', 0.05, 10],
+      ['BHN-004', 0.01, 0],
+      ['BHN-005', 15, 5],
+    ],
+  },
+  'MKN-002': {
+    // Mie Goreng
+    yield: 1,
+    items: [
+      ['BHN-007', 1, 5],
+      ['BHN-003', 0.045, 10],
+      ['BHN-008', 0.04, 20],
+      ['BHN-004', 0.01, 0],
+      ['BHN-006', 10, 5],
+    ],
+  },
+  'MKN-003': {
+    // Ayam Bakar Madu - berbasis 1/4 ekor (300 gram)
+    yield: 1,
+    items: [
+      ['BHN-025', 0.3, 5],
+      ['BHN-006', 15, 5],
+      ['BHN-005', 10, 5],
+    ],
+  },
+  'MKN-004': {
+    // Soto Ayam
+    yield: 1,
+    items: [
+      ['BHN-003', 0.06, 10],
+      ['BHN-008', 0.05, 20],
+      ['BHN-001', 0.02, 2],
+      ['BHN-005', 12, 5],
+    ],
+  },
+  'MKN-005': {
+    // Rendang
+    yield: 1,
+    items: [
+      ['BHN-026', 0.18, 5],
+      ['BHN-012', 0.025, 0],
+      ['BHN-005', 20, 5],
+    ],
+  },
+  'MNM-001': { yield: 1, items: [['BHN-012', 0.012, 0]] },
+  'MNM-002': { yield: 1, items: [['BHN-023', 15, 5], ['BHN-013', 20, 0]] },
+  'MNM-003': { yield: 1, items: [['BHN-014', 1, 15], ['BHN-012', 0.01, 0]] },
+  'MNM-004': { yield: 1, items: [['BHN-021', 1, 0]] },
+  'CMN-001': {
+    yield: 1,
+    items: [
+      ['BHN-009', 0.15, 10],
+      ['BHN-004', 0.015, 0],
+      ['BHN-012', 0.005, 0],
+    ],
+  },
+  'CMN-002': { yield: 1, items: [['BHN-010', 60, 0], ['BHN-004', 0.01, 0]] },
+  'CMN-003': {
+    yield: 1,
+    items: [
+      ['BHN-017', 0.08, 5],
+      ['BHN-003', 0.04, 10],
+      ['BHN-008', 0.03, 20],
+      ['BHN-004', 0.01, 0],
+    ],
+  },
+  'DST-001': { yield: 1, items: [['BHN-024', 1, 20]] },
+  'DST-002': {
+    yield: 1,
+    items: [
+      ['BHN-015', 0.12, 15],
+      ['BHN-020', 20, 5],
+      ['BHN-004', 0.01, 0],
+    ],
+  },
+};
+
+/** Helper: cari id berdasarkan kolom dan nilai. */
+async function findIdByField(conn, table, column, value) {
+  const [rows] = await conn.execute(
+    `SELECT id FROM \`${table}\` WHERE \`${column}\` = ? LIMIT 1`,
+    [value]
+  );
+  return rows.length ? rows[0].id : null;
+}
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -348,6 +513,97 @@ async function seedAddons(conn) {
   console.log(`  product_addons   : ${total}`);
 }
 
+/**
+ * Seed bahan baku.
+ *
+ * Stok awal dicatat lewat INSERT langsung ke ingredients DAN jurnal PURCHASE
+ * di waktu yang sama. Kalau hanya mengisi kolom stock, nilainya akan berbeda
+ * dari riwayat mutasi - dan sistem tidak bisa dipertanggungjawabkan.
+ */
+async function seedIngredients(conn) {
+  let created = 0;
+
+  for (const [code, name, unit, stock, minimumStock, unitPrice] of INGREDIENTS) {
+    const existing = await findIdByCode(conn, 'ingredients', code);
+    if (existing) continue;
+
+    const [result] = await conn.execute(
+      `INSERT INTO ingredients (code, name, unit, stock, minimum_stock, unit_price)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [code, name, unit, stock, minimumStock, unitPrice]
+    );
+
+    // Jurnal pembuka supaya angka stok selalu bisa ditelusuri.
+    await conn.execute(
+      `INSERT INTO inventory_transactions
+         (ingredient_id, type, quantity_in, quantity_out, stock_before, stock_after,
+          reference_type, reference_id, note)
+       VALUES (?, 'PURCHASE', ?, 0, 0, ?, 'manual', NULL, 'Stok awal dari seed')`,
+      [result.insertId, stock, stock]
+    );
+
+    created += 1;
+  }
+
+  console.log(`  ingredients      : ${created} baru dari ${INGREDIENTS.length} total`);
+  return created;
+}
+
+/**
+ * Seed recipe / BOM.
+ *
+ * Takaran per satu porsi. Waste dihitung terpisah oleh recipe.service saat
+ * terjadi penjualan, jadi di sini cukup menyimpan angka dasarnya.
+ */
+async function seedRecipes(conn) {
+  let created = 0;
+  let skipped = 0;
+
+  for (const [productCode, recipe] of Object.entries(RECIPES)) {
+    const productId = await findIdByCode(conn, 'products', productCode);
+    if (!productId) {
+      console.warn(`  recipe dilewati, produk ${productCode} tidak ditemukan`);
+      continue;
+    }
+
+    const existing = await findIdByField(conn, 'recipes', 'product_id', productId);
+    if (existing) {
+      skipped += 1;
+      continue;
+    }
+
+    const [result] = await conn.execute(
+      `INSERT INTO recipes (product_id, name, yield_quantity, note)
+       VALUES (?, ?, ?, ?)`,
+      [
+        productId,
+        `Recipe ${productCode}`,
+        recipe.yield,
+        'Komposisi standar restoran',
+      ]
+    );
+
+    for (const [ingredientCode, quantity, wastePercent] of recipe.items) {
+      const ingredientId = await findIdByCode(conn, 'ingredients', ingredientCode);
+      if (!ingredientId) {
+        console.warn(`  bahan ${ingredientCode} tidak ditemukan, dilewati`);
+        continue;
+      }
+
+      await conn.execute(
+        `INSERT INTO recipe_items (recipe_id, ingredient_id, quantity, waste_percent)
+         VALUES (?, ?, ?, ?)`,
+        [result.insertId, ingredientId, quantity, wastePercent]
+      );
+    }
+
+    created += 1;
+  }
+
+  console.log(`  recipes          : ${created} dibuat, ${skipped} sudah ada`);
+  return created;
+}
+
 async function seedTables(conn) {
   for (const table of TABLES) {
     await conn.execute(
@@ -385,6 +641,13 @@ async function seed() {
   const info = await testConnection();
   console.log(`  terhubung ke     : ${info.db} (${info.version})\n`);
 
+  // Tabel Fase 4 harus ada sebelum seed bahan baku dijalankan.
+  const hasInventory = await tableExists(info.db, 'ingredients');
+  if (!hasInventory) {
+    console.warn('  Tabel inventory belum ada. Jalankan "npm run migrate:phase4" lebih dulu.');
+    console.warn('  Seed bahan baku dan recipe dilewati.');
+  }
+
   await withTransaction(async (conn) => {
     console.log('Menulis data master:');
     const roleIds = await seedRoles(conn);
@@ -395,9 +658,29 @@ async function seed() {
     await seedProducts(conn);
     await seedAddons(conn);
     await seedTables(conn);
+
+    if (hasInventory) {
+      await seedIngredients(conn);
+      await seedRecipes(conn);
+    }
   });
 
   console.log('\nSeed selesai. Kredensial demo sudah dicetak di atas.');
+}
+
+/**
+ * Cek apakah sebuah tabel sudah ada di database aktif.
+ * Dipakai agar seed tetap jalan di instalasi Fase 1-3 yang belum menjalankan
+ * migrasi Fase 4.
+ */
+async function tableExists(databaseName, tableName) {
+  const [rows] = await query(
+    `SELECT COUNT(*) AS total
+       FROM information_schema.tables
+      WHERE table_schema = ? AND table_name = ?`,
+    [databaseName, tableName]
+  );
+  return rows[0].total > 0;
 }
 
 if (require.main === module) {

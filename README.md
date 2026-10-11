@@ -28,12 +28,12 @@ MariaDB/MySQL · Socket.IO · PWA
 
 ## Fitur
 
-### Sudah Diimplementasikan (Fase 1-3)
+### Sudah Diimplementasikan (Fase 1-4)
 
 | Modul | Fitur |
 |---|---|
 | **Autentikasi** | Login, registrasi, JWT access + refresh token, ganti password |
-| **RBAC** | 8 role, 25 permission, pembatasan akses di sisi server |
+| **RBAC** | 8 role, 27 permission, pembatasan akses di sisi server |
 | **QR Ordering** | Pindai QR meja, pesan tanpa login, lacak status realtime |
 | **POS / Kasir** | Transaksi meja atau take away, diskon, 4 metode pembayaran, cetak struk |
 | **Payment** | CASH (dengan kembalian), QRIS, TRANSFER, CARD + refund penuh/sebagian |
@@ -41,15 +41,19 @@ MariaDB/MySQL · Socket.IO · PWA
 | **Manajemen Meja** | CRUD meja, terbitkan ulang QR, cetak semua QR |
 | **Manajemen Menu** | Kategori, produk, varian, addon, tandai produk habis |
 | **Manajemen User** | CRUD user, atur role, atur permission per role |
+| **Inventory** | Master bahan baku, satuan & konversi, stok minimum, nilai stok, deteksi stok menipis |
+| **Recipe / BOM** | Resep per produk, waste persen, recik ingredient yang dipakai |
+| **Otomatis Stok** | Stok bahan keluar saat order `CONFIRMED`, kembali saat dibatalkan/refund |
+| **Stock Opname** | Draft, isi hitung fisik, selisih otomatis, approve terapkan ke stok |
 | **Laporan** | Dashboard harian, grafik penjualan per jam, produk terlaris, sebaran metode bayar |
 | **Notifikasi** | Realtime via Socket.IO, tandai sudah dibaca |
 | **Audit Log** | Mencatat aktivitas penting beserta IP dan user agent |
 | **PWA** | Installable, offline untuk aset statis, shortcut aplikasi |
 
-### Belum (Fase 4-6)
+### Belum (Fase 5-6)
 
-Inventory bahan baku, Recipe/BOM, Procurement, Finance lengkap, backup otomatis.
-Rancangnya ada di [`docs/`](docs/).
+Procurement/pembelian dari supplier, modul finance dan laporan laba rugi
+lengkap, backup otomatis. Rancangannya ada di [`docs/`](docs/).
 
 ---
 
@@ -123,9 +127,15 @@ npm run migrate
 npm run seed
 ```
 
-- `migrate` membuat 20 tabel. **Perintah ini menghapus database lama.**
-- `seed` mengisi role, permission, 4 akun demo, 4 kategori, 14 produk,
-  9 addon, dan 10 meja beserta QR code.
+- `migrate` membuat 26 tabel. **Perintah ini menghapus database lama.**
+- `seed` mengisi role, permission, 5 akun demo, 4 kategori, 14 produk,
+  9 addon, 10 meja beserta QR code, 26 bahan baku, dan 14 recipe.
+
+Database yang sudah berisi data tidak perlu dihapus. Jalankan migrasi tambahan:
+
+```bash
+npm run migrate:phase4
+```
 
 ### 5. Jalankan Aplikasi
 
@@ -143,10 +153,11 @@ Buka **http://localhost:3000**
 | `npm run dev` | Server dengan auto-reload (`node --watch`) |
 | `npm run migrate` | Membuat tabel (menghapus DB lama) |
 | `npm run migrate -- --force` | Sama, tanpa tanya konfirmasi |
+| `npm run migrate:phase4` | Menambah 6 tabel Inventory ke DB yang sudah ada |
 | `npm run seed` | Mengisi data awal (aman diulang) |
 | `npm run reset` | migrate --force + seed |
 | `npm test` | Unit test (tanpa server) |
-| `npm run test:e2e` | Integration test (perlu server aktif) |
+| `npm run test:e2e` | Integration test (62 test, menyalakan server sendiri) |
 | `npm run lint` | Pemeriksaan kode dan secret |
 | `npm run icons` | Membuat ulang ikon PWA |
 
@@ -160,6 +171,7 @@ Buka **http://localhost:3000**
 | Manager | `manager@restaurant.test` | `Manager123!` | Dashboard |
 | Kasir | `cashier@restaurant.test` | `Cashier123!` | Kasir / POS |
 | Dapur | `kitchen@restaurant.test` | `Kitchen123!` | Kitchen Display |
+| Inventory | `inventory@restaurant.test` | `Inventory123!` | Inventory |
 
 > Password di atas hanya untuk pengembangan. **Ganti sebelum deploy.**
 
@@ -237,9 +249,9 @@ smart-restaurant-management/
 │   │   ├── audit.js           Audit log
 │   │   ├── errorHandler.js    Penanganan error terpusat
 │   │   └── asyncHandler.js    Penangkap rejection Express 4
-│   ├── controllers/           10 controller (tipis)
-│   ├── services/              12 service (seluruh logika bisnis)
-│   ├── routes/                10 berkas route
+│   ├── controllers/           13 controller (tipis)
+│   ├── services/              15 service (seluruh logika bisnis)
+│   ├── routes/                12 berkas route
 │   └── utils/
 │       ├── ApiError.js        Kelas error terstruktur
 │       ├── money.js           Perhitungan uang
@@ -248,21 +260,22 @@ smart-restaurant-management/
 │       └── validators/        Validator ringan
 │
 ├── frontend/
-│   ├── *.html                 13 halaman
+│   ├── *.html                 14 halaman
 │   ├── css/style.css          Stylesheet tunggal
-│   ├── js/                    12 modul ES
+│   ├── js/                    20 modul ES
 │   ├── assets/                Ikon PWA
 │   ├── manifest.json
 │   └── sw.js                  Service worker
 │
 ├── database/
-│   ├── schema.sql             20 tabel
+│   ├── schema.sql             26 tabel
 │   ├── migrate.js             Runner migrasi
+│   ├── migrations/            002_phase4_inventory.sql
 │   └── seed.js                Data awal
 │
 ├── tests/
 │   ├── unit/                  money, rbac (28 test)
-│   └── integration/           e2e, smoke-pages (35 test)
+│   └── integration/           e2e, smoke-pages, inventory (62 test)
 │
 ├── docs/                      11 diagram Mermaid
 ├── scripts/
@@ -364,6 +377,27 @@ Semua respons memakai bentuk yang konsisten:
 | GET | `/api/notifications` | Daftar notifikasi |
 | PATCH | `/api/notifications/:id/read` | Tandai dibaca |
 
+### Inventory
+
+Semua endpoint butuh permission `inventory.view` (baca) atau
+`inventory.manage` (tulis). Daftar lengkap ada di
+[`docs/07-sequence-inventory-deduction.md`](docs/07-sequence-inventory-deduction.md).
+
+| Method | Endpoint | Keterangan |
+|---|---|---|
+| GET | `/api/inventory/ingredients` | Daftar bahan |
+| GET | `/api/inventory/ingredients/low-stock` | Bahan di bawah stok minimum |
+| POST | `/api/inventory/ingredients` | Tambah bahan |
+| PUT | `/api/inventory/ingredients/:id` | Ubah bahan |
+| GET | `/api/inventory/recipes/products/:productId` | Resep satu produk |
+| PUT | `/api/inventory/recipes/products/:productId` | Simpan resep (BOM) |
+| GET | `/api/inventory/summary` | Ringkasan nilai dan jumlah stok |
+| GET | `/api/inventory/movements` | Jurnal transaksi |
+| POST | `/api/inventory/adjustment` | Penyesuaian stok manual |
+| POST | `/api/inventory/receive` | Penerimaan barang dari supplier |
+| GET | `/api/inventory/opnames` | Daftar stock opname |
+| POST | `/api/inventory/opnames/:id/approve` | Terapkan hasil opname ke stok |
+
 ### Health Check
 
 ```http
@@ -376,15 +410,18 @@ GET /health
 
 ```bash
 npm test           # Unit test (28 test, tanpa server)
-npm run test:e2e   # Integration test (35 test, perlu server aktif)
+npm run test:e2e   # Integration test (62 test, server dinyalakan otomatis)
 npm run lint       # Lint + pemeriksaan secret
 ```
 
-Untuk test integrasi, server harus berjalan lebih dulu:
+Test integrasi menyalakan HTTP server dan Socket.IO sendiri pada port
+ephemeral lewat `tests/integration/helpers/server.js`, jadi server tidak perlu
+dijalankan manual dan tidak bentrok dengan instance yang sedang dipakai.
 
 ```bash
-npm start                    # Terminal 1
-npm run test:e2e             # Terminal 2
+npm run migrate -- --force   # database bersih (opsional)
+npm run seed
+npm run test:e2e
 ```
 
 ### Cakupan Test
@@ -395,6 +432,7 @@ npm run test:e2e             # Terminal 2
 | `unit/rbac.test.js` | 8 | HasPermission, bypass ADMIN, tanpa wildcard |
 | `integration/e2e.test.js` | 27 | Seluruh alur bisnis dan keamanan |
 | `integration/smoke-pages.test.js` | 8 | Halaman, aset, manifest, service worker |
+| `integration/inventory.test.js` | 27 | Bahan, recipe, jurnal, opname, pengurangan stok |
 
 Test integrasi mencakup skenario keamanan penting:
 
@@ -405,6 +443,13 @@ Test integrasi mencakup skenario keamanan penting:
 - Role tanpa izin benar-benar ditolak (403)
 - Pembayaran melebihi sisa tagihan ditolak
 - Kembalian hanya untuk metode CASH
+- Stok bahan tidak bisa dikurangi langsung lewat API
+- Resep dengan satuan yang tidak cocok ditolak
+- Quantity bahan negatif atau nol ditolak
+- Stok opname hanya bisa di-approve sekali
+
+Test inventory juga mengunci aturan satuan: takaran recipe memakai satuan yang
+sama dengan satuan bahan, sehingga beras `kg` ditulis `0.150`, bukan `150`.
 
 ---
 
@@ -469,12 +514,21 @@ tanpa `escapeHtml()`.
 
 ## Pengembangan Selanjutnya
 
-### Fase 4 - Inventory
+### Fase 4 - Inventory (selesai)
 
-Prioritas: tabel `ingredients`, `recipes`, `recipe_items`,
-`inventory_transactions`, `stock_opnames`, dan pengurangan stok otomatis saat
-produk terjual. Rancangan tersedia di
+Tabel `ingredients`, `recipes`, `recipe_items`, `inventory_transactions`,
+`stock_opnames`, dan `stock_opname_items` sudah ada. Pengurangan stok berjalan
+otomatis saat order `CONFIRMED` dan dikembalikan saat order dibatalkan atau
+refund penuh. Lihat
 [`docs/07-sequence-inventory-deduction.md`](docs/07-sequence-inventory-deduction.md).
+
+Sisa pekerjaan Fase 4 yang masih terbuka:
+
+- Konversi satuan antar bahan (`gramsToKg` sudah ada di service, belum dipakai
+  di form reseps)
+- Riwayat pergerakan stok per bahan dalam bentuk grafik
+- Retur bahan dari dapur memakai tipe `RETURN` (sudah ada di enum, belum ada
+  endpoint-nya)
 
 ### Fase 5 - Procurement
 

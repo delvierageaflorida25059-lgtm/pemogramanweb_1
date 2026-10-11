@@ -1,123 +1,22 @@
 'use strict';
 
-const http = require('http');
-const path = require('path');
-const { Server } = require('socket.io');
-
-const config = require('./config/env');
-const { createApp } = require('./app');
-const socketConfig = require('./config/socket');
-const { testConnection, closePool } = require('./config/database');
-const token = require('./utils/token');
-const userService = require('./services/user.service');
-
 /**
- * Titik masuk server: membuka HTTP + Socket.IO dan menjalankan graceful
- * shutdown supaya koneksi database ditutup dengan rapi.
+ * Entry point server produksi.
+ *
+ * Tugas berkas ini hanya:
+ *   1. membangun HTTP + Socket.IO lewat bootstrap.js
+ *   2. memastikan database terjangkau
+ *   3. menjalankan graceful shutdown
+ *
+ * Seluruh konfigurasi HTTP dan realtime ada di bootstrap.js supaya bisa dipakai
+ * ulang oleh integration test tanpa perbedaan perilaku.
  */
 
-const app = createApp();
-const server = http.createServer(app);
+const config = require('./config/env');
+const { createServer, closeServer } = require('./bootstrap');
+const { testConnection } = require('./config/database');
 
-const io = new Server(server, {
-  cors: {
-    origin: config.security.corsOrigin,
-    credentials: true,
-  },
-  path: '/socket.io',
-});
-
-socketConfig.init(io);
-
-// ---------------------------------------------------------------------------
-// Realtime: room dan otorisasi handshake
-// ---------------------------------------------------------------------------
-
-io.use(async (socket, next) => {
-  try {
-    const raw = socket.handshake.auth?.token || socket.handshake.query?.token;
-
-    // Koneksi tanpa token tetap boleh masuk ke ruang publik (kitchen board
-    // dan lacak pesanan tidak butuh login), tapi tanpa hak masuk room privat.
-    if (!raw) {
-      socket.data.user = null;
-      return next();
-    }
-
-    const payload = token.verifyAccessToken(String(raw));
-    const user = await userService.findAuthUserById(payload.sub);
-
-    if (!user || user.status !== 'ACTIVE') {
-      socket.data.user = null;
-      return next();
-    }
-
-    socket.data.user = {
-      id: user.id,
-      name: user.name,
-      roles: user.roles,
-      permissions: user.permissions,
-    };
-    return next();
-  } catch {
-    socket.data.user = null;
-    return next();
-  }
-});
-
-io.on('connection', (socket) => {
-  const user = socket.data.user;
-  const requested = socket.handshake.auth?.rooms;
-  const requestedList = Array.isArray(requested) ? requested : [];
-
-  // Room publik boleh dimasuki siapa saja.
-  const PUBLIC_ROOMS = new Set([socketConfig.ROOMS.kitchen, socketConfig.ROOMS.dashboard]);
-  for (const room of requestedList) {
-    if (typeof room !== 'string') continue;
-    if (PUBLIC_ROOMS.has(room) || user) {
-      socket.join(room);
-    }
-  }
-
-  if (user) {
-    // Notifikasi pribadi.
-    socket.join(`user:${user.id}`);
-
-    // Meja hanya boleh diikuti oleh staff atau pemilik QR meja tersebut.
-    const tableCode = socket.handshake.auth?.tableCode;
-    if (typeof tableCode === 'string' && tableCode) {
-      socket.data.tableCode = tableCode;
-      socket.join(socketConfig.ROOMS.table(tableCode));
-    }
-  }
-
-  socket.emit('connection:ready', {
-    authenticated: Boolean(user),
-    user: user ? { id: user.id, name: user.name, roles: user.roles } : null,
-  });
-
-  socket.on('rooms:join', (rooms) => {
-    if (!Array.isArray(rooms)) return;
-    for (const room of rooms) {
-      if (typeof room !== 'string') continue;
-      if (PUBLIC_ROOMS.has(room) || user) socket.join(room);
-    }
-  });
-
-  socket.on('disconnect', (reason) => {
-    console.log(`[socket] ${socket.id} terputus: ${reason}`);
-  });
-
-  if (user) {
-    console.log(`[socket] ${user.name} (${user.roles.join(', ')}) terhubung.`);
-  } else {
-    console.log(`[socket] ${socket.id} terhubung sebagai tamu.`);
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Jalankan server
-// ---------------------------------------------------------------------------
+const { server, io } = createServer();
 
 let shuttingDown = false;
 
@@ -129,14 +28,11 @@ async function shutdown(code = 0) {
   shuttingDown = true;
   console.log('\nMematikan server...');
 
-  io.close();
-  await new Promise((resolve) => server.close(resolve));
-
   try {
-    await closePool();
-    console.log('Koneksi database ditutup.');
+    await closeServer({ server, io });
+    console.log('Server dan koneksi database ditutup.');
   } catch (error) {
-    console.error('Gagal menutup koneksi database:', error.message);
+    console.error('Gagal menutup dengan rapi:', error.message);
   }
 
   process.exit(code);
@@ -165,13 +61,14 @@ async function start() {
   server.listen(config.port, () => {
     console.log('');
     console.log(`  ${config.appName}`);
-    console.log(`  Server    : http://localhost:${config.port}`);
-    console.log(`  API       : http://localhost:${config.port}/api`);
-    console.log(`  Health    : http://localhost:${config.port}/health`);
-    console.log(`  QR base   : ${config.publicBaseUrl}`);
-    console.log(`  Environment: ${config.nodeEnv}`);
+    console.log(`  Server      : http://localhost:${config.port}`);
+    console.log(`  API         : http://localhost:${config.port}/api`);
+    console.log(`  Health      : http://localhost:${config.port}/health`);
+    console.log(`  QR base     : ${config.publicBaseUrl}`);
+    console.log(`  Environment : ${config.nodeEnv}`);
     console.log('');
-    console.log(`  Halaman   : /login.html  /menu.html  /cashier.html  /kitchen.html  /dashboard.html`);
+    console.log('  Halaman     : /index.html  /menu.html  /cashier.html');
+    console.log('                /kitchen.html  /dashboard.html  /admin-inventory.html');
     console.log('');
   });
 }
@@ -180,4 +77,4 @@ if (require.main === module) {
   start();
 }
 
-module.exports = { app, server, io, start, shutdown };
+module.exports = { server, io, start, shutdown };

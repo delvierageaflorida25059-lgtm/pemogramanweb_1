@@ -11,6 +11,7 @@ package-lock.json.bak
 logs/
 *.log
 *.err
+*.out
 npm-debug.log*
 
 # Runtime

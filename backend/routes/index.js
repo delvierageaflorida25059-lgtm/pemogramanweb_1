@@ -13,6 +13,7 @@ const tableRoutes = require('./table.routes');
 const orderRoutes = require('./order.routes');
 const paymentRoutes = require('./payment.routes');
 const kitchenRoutes = require('./kitchen.routes');
+const inventoryRoutes = require('./inventory.routes');
 const miscRoutes = require('./misc.routes');
 
 /**
@@ -47,6 +48,11 @@ mount('/products', productRoutes);
 mount('/orders', orderRoutes);
 mount('/payments', paymentRoutes);
 mount('/kitchen', kitchenRoutes);
+
+// Fase 4 - Inventory, Recipe/BOM, dan Stock Opname
+mount('/inventory', inventoryRoutes);
+
+// Notifikasi dan dashboard
 mount('/notifications', miscRoutes);
 mount('/dashboard', miscRoutes);
 

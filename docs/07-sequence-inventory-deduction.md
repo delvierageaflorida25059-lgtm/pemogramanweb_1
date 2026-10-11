@@ -1,32 +1,52 @@
-# Sequence Diagram - Inventory Deduction (KONSEPTUAL - Fase 4)
+# Sequence Diagram - Inventory Deduction (Fase 4 - SUDAH DIIMPLEMENTASIKAN)
 
-> **STATUS: BELUM DIIMPLEMENTASIKAN**
+> **STATUS: SUDAH DIIMPLEMENTASIKAN**
 >
-> Pada Fase 1-3, penjualan produk **tidak** mengurangi stok bahan baku karena
-> tabel `ingredients`, `recipes`, dan `recipe_items` belum ada. Yang sudah
-> diimplementasikan hanyalah penandaan produk sebagai `AVAILABLE` /
-> `UNAVAILABLE` secara manual.
+> Pengurangan stok bahan baku otomatis sudah berjalan. Tabel `ingredients`,
+> `recipes`, `recipe_items`, `inventory_transactions`, `stock_opnames`, dan
+> `stock_opname_items` dibuat pada Fase 4.
 >
-> Diagram ini merancang mekanisme pengurangan stok otomatis yang akan dibangun
-> di Fase 4.
+> Perbedaan penting dari rancangan awal: stok **tidak** dikurangi saat order
+> dibuat, melainkan saat order berstatus **CONFIRMED**. Alasannya dijelaskan di
+> bagian "Kapan Stok Dikurangi".
+
+## Kapan Stok Dikurangi
+
+```text
+Order dibuat (PENDING)  ->  stok BELUM berubah
+Order lunas dibayar     ->  status CONFIRMED, stok KELUAR
+Order dibatalkan / void ->  status CANCELLED, stok KEMBALI
+```
+
+Alasannya:
+
+1. **Order yang batal sebelum dibayar tidak pernah memakai bahan.** Kalau stok
+   langsung keluar saat order dibuat, order yang lalu di-void akan sia-sia
+   walaupun bahan sebenarnya masih ada di dapur.
+2. **Satu transaksi.** Pengurangan stok berjalan di dalam transaksi database
+   yang sama dengan perubahan status, sehingga keduanya tidak bisa tidak sinkron.
+3. **Order QR belum tentu dibayar.** Tamu bisa membuat order lalu meninggalkannya.
 
 ## Kenapa Stok Bahan Perlu Recipe / BOM?
 
 Stok produk jadi (Nasi Goreng) sebenarnya berasal dari beberapa bahan baku:
 
 ```text
-Product: Nasi Goreng Spesial
-    ├── Rice        = 150 gram
-    ├── Egg         = 1 pcs
-    ├── Chicken     = 50 gram
-    ├── Cooking Oil = 10 ml
-    └── Seasoning   = 5 gram
+Product: Nasi Goreng Spesial (1 porsi)
+    ├── Beras Pulen   = 0.150 kg (waste 2%)
+    ├── Telur Ayam    = 1 pcs
+    ├── Ayam Potong   = 0.050 kg (waste 10%)
+    ├── Minyak Goreng = 0.010 liter
+    └── Bumbu Rujak   = 15 gram (waste 5%)
 ```
 
 Tanpa relasi ini, sistem hanya tahu "Nasi Goreng terjual 3 porsi" dan tidak
-Tahu berapa kilogram Rice yang seharusnya berkurang.
+tahu berapa kilogram beras yang seharusnya berkurang.
 
-## Diagram Konseptual
+> **Penting:** takaran recipe memakai satuan yang sama dengan satuan bahan.
+> Beras bersatuan `kg`, jadi 0.150 berarti 150 gram. Menulis 150 untuk bahan
+> `kg` berarti 150 **kilogram** per porsi - kesalahan ini sempat terhima oleh
+> seed dan sekarang dijaga oleh pengujian.
 
 ```mermaid
 sequenceDiagram
@@ -46,10 +66,10 @@ sequenceDiagram
     R->>OS: changeStatus(orderId, 'CONFIRMED')
     OS->>DB: UPDATE orders SET status = 'CONFIRMED'
 
-    Note over OS: Pengurangan stok dilakukan<br/>pada saat order dibuat (Fase 4)<br/>atau saat dikonfirmasi (Fase 5)<br/>, bukan saat status berubah.
+    Note over OS: Status diubah ke CONFIRMED terlebih dahulu,<br/>lalu pengurangan stok memakai bahan<br/>di dalam transaksi yang sama.
 
-    rect rgb(250, 247, 242)
-    Note over OS,DB: FASE 4 - belum ada
+    rect rgb(234, 247, 238)
+    Note over OS,DB: inventory.service.js - sudah berjalan di Fase 4
 
     OS->>RS: getIngredientsForOrder(orderItems)
     RS->>DB: SELECT ri.*, i.name, i.stock, i.minimum_stock<br/>FROM recipe_items ri<br/>JOIN ingredients i ON i.id = ri.ingredient_id<br/>WHERE ri.product_id IN (...)
@@ -89,7 +109,11 @@ sequenceDiagram
     end
 ```
 
-## Tabel yang Akan Dibutuhkan (Fase 4)
+## Tabel yang Digunakan (Fase 4)
+
+Semua tabel di bawah sudah ada di `database/schema.sql`. Skema resminya
+mengadecimal jumlah dengan 3 angka (`DECIMAL(12,3)`) dan menyimpan
+`unit` sebagai varchar agar satuan bebas (`kg`, `gram`, `pcs`, `liter`).
 
 ```text
 ingredients
@@ -150,14 +174,48 @@ Contoh:
 
 | Type | Arah | Kapan Terjadi |
 |---|---|---|
-| `PURCHASE` | Masuk | Barang diterima dari supplier (Fase 5) |
-| `SALE` | Keluar | Produk terjual ke pelanggan |
-| `ADJUSTMENT` | Masuk/Keluar | Penyesuaian manual oleh staff |
-| `OPNAME` | Masuk/Keluar | Hasil hitung fisik |
+| `PURCHASE` | Masuk | Barang diterima dari supplier (`POST /api/inventory/receive`) |
+| `SALE` | Keluar | Order masuk status `CONFIRMED` |
+| `ADJUSTMENT` | Masuk/Keluar | Penyesuaian manual oleh staff (`POST /api/inventory/adjustment`) |
+| `OPNAME` | Masuk/Keluar | Hasil hitung fisik saat opname disetujui |
 | `WASTE` | Keluar | Bahan hilang/rusak |
-| `VOID` | Balik | Pembatalan order mengembalikan stok |
+| `VOID` | Balik | Order dibatalkan mengembalikan stok |
+| `RETURN` | Masuk | Retur bahan dari dapur |
 
-## Kendala yang Harus Diperhatikan
+## Endpoint Inventory (Fase 4)
+
+Semua endpoint berada di `/api/inventory` dan membutuhkan permission
+`inventory.view` (baca) atau `inventory.manage` (tulis).
+
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET | `/ingredients` | Daftar bahan + pagination/filter |
+| GET | `/ingredients/low-stock` | Bahan di bawah stok minimum |
+| GET | `/ingredients/:id` | Detail bahan |
+| POST | `/ingredients` | Tambah bahan |
+| PUT | `/ingredients/:id` | Ubah bahan |
+| DELETE | `/ingredients/:id` | Nonaktifkan bahan |
+| GET | `/recipes` | Daftar recipe |
+| GET | `/recipes/products/:productId` | Recipe satu produk |
+| PUT | `/recipes/products/:productId` | Simpan recipe (BOM) |
+| DELETE | `/recipes/products/:productId` | Hapus recipe |
+| GET | `/summary` | Ringkasan nilai & jumlah stok |
+| GET | `/movements` | Jurnal transaksi |
+| POST | `/check-low-stock` | Pardon cek stok menipis |
+| POST | `/adjustment` | Penyesuaian stok manual |
+| POST | `/receive` | Penerimaan barang (PURCHASE) |
+| GET | `/opnames` | Daftar stock opname |
+| POST | `/opnames` | Buat draft opname |
+| GET | `/opnames/:id` | Detail opname |
+| POST | `/opnames/:id/approve` | Setujui & terapkan ke stok |
+| POST | `/opnames/:id/cancel` | Batalkan opname |
+| PUT | `/opnames/:opnameId/items/:ingredientId` | Isi hasil hitung fisik |
+
+UI: `frontend/admin-inventory.html` dengan tab Bahan, Recipe, Jurnal, dan
+Opname. Menu ini muncul pada halaman utama bila pengguna memiliki permission
+`inventory.view`.
+
+## Kendala yang Sudah Diperhatikan
 
 | Kendala | Solusi |
 |---|---|

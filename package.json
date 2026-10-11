@@ -11,6 +11,7 @@
     "start": "node backend/server.js",
     "dev": "node --watch backend/server.js",
     "migrate": "node database/migrate.js",
+    "migrate:phase4": "node database/migrate.js --file=database/migrations/002_phase4_inventory.sql",
     "seed": "node database/seed.js",
     "reset": "node database/migrate.js --force && node database/seed.js",
     "test": "node --test \"tests/unit/*.test.js\"",

@@ -13,7 +13,8 @@ Hubungan antar tabel pada database `restaurant_management`.
 | Order | `orders`, `order_items`, `order_item_addons`, `order_status_history` | 4 |
 | Pembayaran | `payments` | 1 |
 | Sistem | `notifications`, `audit_logs` | 2 |
-| | **Total (Fase 1-3)** | **20** |
+| Inventory | `ingredients`, `recipes`, `recipe_items`, `inventory_transactions`, `stock_opnames`, `stock_opname_items` | 6 |
+| | **Total (Fase 1-4)** | **26** |
 
 ## ERD Lengkap
 
@@ -296,9 +297,11 @@ order_item_addons.price      <- salinan dari product_addons.price
 **Alasan:** struk dari bulan lalu harus tetap menampilkan nama dan harga yang
 benar, walaupun produknya sudah diganti nama atau harganya sudah dinaikkan.
 
-## Tabel Fase 4-6 (Belum Ada)
+## Tabel Inventory (Fase 4 - Sudah Ada)
 
-Rancangan tabel untuk Inventory, Procurement, dan Finance:
+Enam tabel di bawah sudah dibuat di `database/schema.sql` dan dipakai oleh
+`backend/services/inventory.service.js`. Stok bahan hanya boleh diubah lewat
+service tersebut agar setiap perubahan selalu punya jurnal.
 
 ```mermaid
 erDiagram
@@ -312,10 +315,11 @@ erDiagram
         BIGINT id PK
         VARCHAR name UK
         VARCHAR code UK
-        VARCHAR unit "gram/ml/pcs"
+        VARCHAR unit "kg/gram/ml/pcs/liter"
         DECIMAL stock
         DECIMAL minimum_stock
         DECIMAL unit_price
+        ENUM status "ACTIVE/INACTIVE"
     }
 
     recipes {
@@ -336,20 +340,56 @@ erDiagram
     inventory_transactions {
         BIGINT id PK
         BIGINT ingredient_id FK
-        ENUM type "PURCHASE/SALE/ADJUSTMENT/OPNAME/WASTE/VOID"
+        BIGINT order_id FK
+        ENUM type "PURCHASE/SALE/ADJUSTMENT/OPNAME/WASTE/VOID/RETURN"
         DECIMAL quantity_in
         DECIMAL quantity_out
         VARCHAR reference_type
         BIGINT reference_id
     }
 
-    suppliers ||--o{ purchase_orders : "memasok"
+    stock_opnames {
+        BIGINT id PK
+        VARCHAR opname_number UK
+        ENUM status "DRAFT/APPROVED/CANCELLED"
+        BIGINT created_by FK
+        BIGINT approved_by FK
+    }
+
+    stock_opname_items {
+        BIGINT id PK
+        BIGINT stock_opname_id FK
+        BIGINT ingredient_id FK
+        DECIMAL system_stock
+        DECIMAL physical_stock
+        DECIMAL difference
+    }
+```
+
+Relasi detail:
+
+```text
+products 1 --- 0..1 recipes
+recipes  1 --- 1..* recipe_items
+ingredients 1 --- 0..* recipe_items
+ingredients 1 --- 0..* inventory_transactions
+orders 1 --- 0..* inventory_transactions
+ingredients 1 --- 0..* stock_opname_items
+stock_opnames 1 --- 1..* stock_opname_items
+```
+
+## Tabel Procurement & Finance (Fase 5-6 - Belum Ada)
+
+Rancangan tabel untuk pembelian dari supplier, penerimaan barang, dan laporan
+keuangan. Belum ada di `database/schema.sql`.
+
+```mermaid
+erDiagram
     suppliers ||--o{ purchase_request_items : "mengusulkan"
     purchase_requests ||--o{ purchase_request_items : "terdiri dari"
     purchase_requests ||--o{ purchase_orders : "menghasilkan"
     purchase_orders ||--o{ purchase_order_items : "terdiri dari"
     purchase_orders ||--o{ goods_receipts : "diterima"
-    ingredients ||--o{ stock_opnames : "dihitung"
 
     suppliers {
         BIGINT id PK

@@ -13,7 +13,9 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000';
+const { startTestServer } = require('./helpers/server');
+
+let BASE;
 
 /** Halaman yang harus bisa diakses publik. */
 const PUBLIC_PAGES = [
@@ -64,6 +66,17 @@ const STATIC_ASSETS = [
   '/assets/icon-512.png',
   '/assets/favicon.png',
 ];
+
+let server;
+
+test.before(async () => {
+  server = await startTestServer();
+  BASE = server.baseUrl;
+});
+
+test.after(async () => {
+  if (server) await server.close();
+});
 
 async function fetchText(path) {
   const response = await fetch(`${BASE}${path}`);

@@ -54,6 +54,13 @@ const MODULES = [
     permission: 'product.manage',
   },
   {
+    href: '/admin-inventory.html',
+    icon: 'B',
+    title: 'Inventory',
+    desc: 'Stok bahan baku dan resep (BOM)',
+    permission: 'inventory.view',
+  },
+  {
     href: '/admin-tables.html',
     icon: 'B',
     title: 'Meja & QR Code',

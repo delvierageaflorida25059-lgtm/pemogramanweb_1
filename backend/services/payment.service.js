@@ -4,6 +4,7 @@ const { query, withTransaction } = require('../config/database');
 const ApiError = require('../utils/ApiError');
 const money = require('../utils/money');
 const orderService = require('./order.service');
+const inventoryService = require('./inventory.service');
 const socket = require('../config/socket');
 const notificationService = require('./notification.service');
 
@@ -46,6 +47,11 @@ async function create(payload, user = null) {
   }
 
   const orderId = Number(payload.order_id);
+
+  // Hasil sinkronisasi stok. Dideklarasikan di luar transaksi supaya masih
+  // terbaca setelah COMMIT, lalu dipakai untuk mengirim notifikasi.
+  let stockResult = null;
+
   const result = await withTransaction(async (conn) => {
     // Lock baris order supaya dua kasir tidak bisa membayar order yang sama
     // secara bersamaan dan menyebabkan dobel kredit.
@@ -83,6 +89,7 @@ async function create(payload, user = null) {
       );
     }
 
+    // Hasil sinkronisasi stok, diisi di dalam transaksi lalu dibaca setelah COMMIT.
     let changeAmount = 0;
     if (payload.method === 'CASH') {
       const tender = money.round(payload.tender ?? amount);
@@ -129,6 +136,11 @@ async function create(payload, user = null) {
          VALUES (?, 'PENDING', 'CONFIRMED', ?, 'Otomatis setelah pembayaran lunas')`,
         [orderId, user ? user.id : null]
       );
+
+      // ---- Fase 4: stok bahan baku dikurangi saat order confirmed ----
+      // Idempoten, jadi aman bila status ini nanti diubah lagi lewat
+      // order.service.changeStatus (tidak akan mengurangi dua kali).
+      stockResult = await inventoryService.deductForOrder(conn, orderId, user);
     }
 
     return {
@@ -146,6 +158,22 @@ async function create(payload, user = null) {
   });
 
   const order = await orderService.findById(orderId);
+
+  // Notifikasi stok dikirim setelah COMMIT.
+  if (stockResult?.deducted?.length > 0) {
+    socket.emitTo('inventory', 'stock:changed', {
+      orderId,
+      orderNumber: order.orderNumber,
+      movements: stockResult.deducted,
+    });
+
+    for (const movement of stockResult.deducted) {
+      await inventoryService.afterStockChange({
+        ingredientId: movement.ingredientId,
+        stockAfter: movement.stockAfter,
+      });
+    }
+  }
 
   await notificationService.create({
     type: 'PAYMENT',
@@ -243,6 +271,10 @@ async function list(filters = {}) {
 async function refund(payload, user = null) {
   const paymentId = Number(payload.payment_id);
 
+  // Hasil pengembalian stok. Dideklarasikan di luar transaksi supaya masih
+  // terbaca setelah COMMIT, lalu dipakai untuk mengirim notifikasi.
+  let stockResult = null;
+
   const result = await withTransaction(async (conn) => {
     const [paymentRows] = await conn.execute(
       `SELECT id, order_id, method, amount, refunded_amount, status
@@ -310,6 +342,11 @@ async function refund(payload, user = null) {
         [order.id, order.status, user ? user.id : null, payload.reason || 'Refund penuh']
       );
       cancelled = true;
+
+      // ---- Fase 4: kembalikan stok bahan baku ----
+      // Order dibatalkan di sini, sama seperti di order.service.cancel, jadi
+      // bahan yang sempat terpakai harus dikembalikan.
+      stockResult = await inventoryService.restoreForOrder(conn, order.id, user);
     }
 
     await conn.execute(
@@ -337,6 +374,22 @@ async function refund(payload, user = null) {
   });
 
   const order = await orderService.findById(result.orderId);
+
+  // Notifikasi stok dikirim setelah COMMIT.
+  if (stockResult?.restored?.length > 0) {
+    socket.emitTo('inventory', 'stock:changed', {
+      orderId: result.orderId,
+      orderNumber: order.orderNumber,
+      restored: stockResult.restored,
+    });
+
+    for (const movement of stockResult.restored) {
+      await inventoryService.afterStockChange({
+        ingredientId: movement.ingredientId,
+        stockAfter: movement.stockAfter,
+      });
+    }
+  }
 
   await notificationService.create({
     type: 'PAYMENT',

@@ -6,6 +6,7 @@ const config = require('../config/env');
 const money = require('../utils/money');
 const productService = require('./product.service');
 const tableService = require('./table.service');
+const inventoryService = require('./inventory.service');
 const socket = require('../config/socket');
 const notificationService = require('./notification.service');
 
@@ -642,6 +643,9 @@ async function changeStatus(orderId, nextStatus, user = null, note = null) {
     );
   }
 
+  // Hasil sinkronisasi stok, diisi di dalam transaksi lalu dibaca setelah COMMIT.
+  let stockResult = null;
+
   await withTransaction(async (conn) => {
     const extraSql = nextStatus === 'COMPLETED' ? ', completed_at = NOW()' : '';
     await conn.execute(
@@ -669,9 +673,37 @@ async function changeStatus(orderId, nextStatus, user = null, note = null) {
         );
       }
     }
+
+    // ---- Fase 4: sinkronkan stok bahan baku ----
+    // Pengurangan stok dilakukan saat order DITERIMA (CONFIRMED), bukan saat
+    // order dibuat, supaya order yang dibatalkan sebelum dibayar tidak pernah
+    // memakai bahan baku.
+    //
+    // Operasi ini berada di dalam transaksi yang sama dengan perubahan status,
+    // sehingga status order dan stok tidak mungkin tidak sinkron.
+    if (nextStatus === 'CONFIRMED') {
+      stockResult = await inventoryService.deductForOrder(conn, orderId, user);
+    }
   });
 
   const updated = await findById(orderId);
+
+  // Notifikasi stok dikirim setelah COMMIT supaya client tidak pernah
+  // menerima notifikasi untuk perubahan yang ternyata di-rollback.
+  if (stockResult && stockResult.deducted?.length > 0) {
+    socket.emitTo('inventory', 'stock:changed', {
+      orderId: Number(orderId),
+      orderNumber: updated.orderNumber,
+      movements: stockResult.deducted,
+    });
+
+    for (const movement of stockResult.deducted) {
+      await inventoryService.afterStockChange({
+        ingredientId: movement.ingredientId,
+        stockAfter: movement.stockAfter,
+      });
+    }
+  }
 
   // Kabari semua pihak yang saat status berubah.
   socket.emitTo(socket.ROOMS.kitchen, 'order:updated', updated);
@@ -718,29 +750,54 @@ async function cancel(orderId, reason, user = null) {
     );
   }
 
+  // Stok bahan baku yang sempat terpakai dikembalikan, karena order
+  // ini pernah menyentuh status CONFIRMED.
+  let stockResult = null;
+
   await withTransaction(async (conn) => {
-    await conn.execute(
-      `UPDATE orders
-          SET status = 'CANCELLED', cancelled_at = NOW(), cancelled_by = ?, cancel_reason = ?
-        WHERE id = ?`,
-      [user ? user.id : null, reason || null, orderId]
-    );
-
-    await conn.execute(
-      `INSERT INTO order_status_history (order_id, from_status, to_status, changed_by, note)
-       VALUES (?, ?, 'CANCELLED', ?, ?)`,
-      [orderId, current.status, user ? user.id : null, reason]
-    );
-
-    if (current.tableId) {
       await conn.execute(
-        `UPDATE restaurant_tables SET status = 'AVAILABLE' WHERE id = ?`,
-        [current.tableId]
+        `UPDATE orders
+            SET status = 'CANCELLED', cancelled_at = NOW(), cancelled_by = ?, cancel_reason = ?
+          WHERE id = ?`,
+        [user ? user.id : null, reason || null, orderId]
       );
-    }
-  });
+
+      await conn.execute(
+        `INSERT INTO order_status_history (order_id, from_status, to_status, changed_by, note)
+         VALUES (?, ?, 'CANCELLED', ?, ?)`,
+        [orderId, current.status, user ? user.id : null, reason]
+      );
+
+      if (current.tableId) {
+        await conn.execute(
+          `UPDATE restaurant_tables SET status = 'AVAILABLE' WHERE id = ?`,
+          [current.tableId]
+        );
+      }
+
+      // ---- Fase 4: kembalikan stok bahan baku ----
+      // Fungsi ini idempoten, jadi order yang batal dua kali tidak akan
+      // mengembalikan bahan dua kali.
+      stockResult = await inventoryService.restoreForOrder(conn, orderId, user);
+    });
 
   const updated = await findById(orderId);
+
+  if (stockResult && stockResult.restored?.length > 0) {
+    socket.emitTo('inventory', 'stock:changed', {
+      orderId: Number(orderId),
+      orderNumber: updated.orderNumber,
+      restored: stockResult.restored,
+    });
+
+    for (const movement of stockResult.restored) {
+      await inventoryService.afterStockChange({
+        ingredientId: movement.ingredientId,
+        stockAfter: movement.stockAfter,
+      });
+    }
+  }
+
   socket.emitTo(socket.ROOMS.kitchen, 'order:updated', updated);
   socket.emitTo(socket.ROOMS.order(orderId), 'order:status', {
     orderId: Number(orderId),

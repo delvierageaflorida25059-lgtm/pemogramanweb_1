@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 --  Smart Restaurant Management System
 --  Schema Database - Fase 1 sampai Fase 3
 --  Target : MariaDB 10.4 (XAMPP) dengan kompatibilitas MySQL 8
@@ -478,4 +478,185 @@ CREATE TABLE `audit_logs` (
   CONSTRAINT `fk_audit_logs_user`
     FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
     ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================================
+--  7. INVENTORY BAHAN BAKU, RECIPE / BOM, DAN STOCK OPNAME  (Fase 4)
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+--  7.1 Bahan baku (master data)
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE `ingredients` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `code`          VARCHAR(30)  NOT NULL,
+  `name`          VARCHAR(150) NOT NULL,
+  -- Satuan takaran. Recipe memakai satuan yang sama dengan bahan induknya.
+  `unit`          ENUM('gram','kg','ml','liter','pcs','pack','bottle','cans')
+                  NOT NULL DEFAULT 'gram',
+  -- Stok terkini. Selalu diperbarui bersama INSERT ke inventory_transactions
+  -- supaya riwayat dan angka saat ini tidak pernah berbeda.
+  `stock`         DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+  -- Batas bawah. Saat stok menyentuh nilai ini, sistem mengirim notifikasi.
+  `minimum_stock` DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+  `unit_price`    DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  --Supplier masih Fase 5 (tabel suppliers belum ada), jadi kolom ini sengaja
+  -- TANPA foreign key dan baru bisa diisi setelah tabel suppliers tersedia.
+  `supplier_id`   BIGINT UNSIGNED DEFAULT NULL,
+  `is_active`     TINYINT(1)   NOT NULL DEFAULT 1,
+  `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ingredients_code` (`code`),
+  KEY `idx_ingredients_name` (`name`),
+  KEY `idx_ingredients_active` (`is_active`),
+  -- Membantu finding bahan yang stoknya sudah menyentuh batas minimum.
+  KEY `idx_ingredients_low_stock` (`stock`, `minimum_stock`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+--  7.2 Recipe / BOM
+--
+--  Satu produk punya satu recipe. Recipe berisi daftar bahan yang dibutuhkan
+--  untuk menghasilkan SATU porsi produk (lihat yield_quantity).
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE `recipes` (
+  `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `product_id`     BIGINT UNSIGNED NOT NULL,
+  `name`           VARCHAR(150) NOT NULL,
+  -- Jumlah porsi yang dihasilkan satu batch recipe ini.
+  `yield_quantity` DECIMAL(12,3) NOT NULL DEFAULT 1.000,
+  `note`           VARCHAR(500)  DEFAULT NULL,
+  `is_active`      TINYINT(1)    NOT NULL DEFAULT 1,
+  `created_at`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                 ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_recipes_product` (`product_id`),
+  CONSTRAINT `fk_recipes_product`
+    FOREIGN KEY (`product_id`) REFERENCES `products` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+--  7.3 Baris recipe (relasi recipe dengan bahan baku)
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE `recipe_items` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `recipe_id`     BIGINT UNSIGNED NOT NULL,
+  `ingredient_id` BIGINT UNSIGNED NOT NULL,
+  -- Kebutuhan bahan per SATU unit yield recipe, dalam satuan ingredient.unit.
+  `quantity`      DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+  -- Penyusutan untuk bahan yang terbuang saat dimasak, dalam persen.
+  -- Kebutuhan efektif = quantity x (1 + waste_percent / 100).
+  `waste_percent` DECIMAL(5,2)   NOT NULL DEFAULT 0.00,
+  `note`          VARCHAR(255)   DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_recipe_items_recipe_ingredient` (`recipe_id`, `ingredient_id`),
+  KEY `idx_recipe_items_ingredient` (`ingredient_id`),
+  CONSTRAINT `fk_recipe_items_recipe`
+    FOREIGN KEY (`recipe_id`) REFERENCES `recipes` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_recipe_items_ingredient`
+    FOREIGN KEY (`ingredient_id`) REFERENCES `ingredients` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+--  7.4 Mutasi stok (jurnal)
+--
+--  Setiap perubahan stok SELALU disertai satu baris di tabel ini. Kolom
+--  ingredients.stock tanpa accompanying baris di sini dianggap bug.
+--  stock_after disimpan sebagai snapshot supaya riwayat dapat diverifikasi
+--  tanpa menghitung ulang seluruh mutasi.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE `inventory_transactions` (
+  `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `ingredient_id`  BIGINT UNSIGNED NOT NULL,
+  `type`           ENUM('PURCHASE','SALE','ADJUSTMENT','OPNAME','WASTE','VOID','RETURN')
+                   NOT NULL,
+  -- Stok masuk dan keluar tidak pernah keduanya terisi pada satu baris.
+  -- Sisa 0 berarti tidak ada perubahan arah tersebut.
+  `quantity_in`    DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+  `quantity_out`   DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+  `stock_before`   DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+  `stock_after`    DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+  -- Asal-usul mutasi: 'order', 'purchase', 'opname', atau 'manual'.
+  `reference_type` VARCHAR(30)     DEFAULT NULL,
+  `reference_id`   BIGINT UNSIGNED DEFAULT NULL,
+  -- Disederhanakan dari reference_type/reference_id supaya relasi ke order
+  -- tetap dapat dibuat foreign key (kitchen perlu melacak order spesifik).
+  `order_id`       BIGINT UNSIGNED DEFAULT NULL,
+  `note`           VARCHAR(255)     DEFAULT NULL,
+  `created_by`     BIGINT UNSIGNED  DEFAULT NULL,
+  `created_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_inv_tx_ingredient_created` (`ingredient_id`, `created_at`),
+  KEY `idx_inv_tx_order` (`order_id`),
+  KEY `idx_inv_tx_type_created` (`type`, `created_at`),
+  KEY `idx_inv_tx_reference` (`reference_type`, `reference_id`),
+  CONSTRAINT `fk_inv_tx_ingredient`
+    FOREIGN KEY (`ingredient_id`) REFERENCES `ingredients` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_inv_tx_order`
+    FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_inv_tx_user`
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------------
+--  7.5 Stock opname (hitung fisik)
+--
+--  Hasil hitung fisik dibandingkan dengan stok sistem. Selisihnya dicatat
+--  sebagai mutasi bertipe OPNAME ketika opname disetujui.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE `stock_opnames` (
+  `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `opname_number`  VARCHAR(30)  NOT NULL,
+  `status`         ENUM('DRAFT','APPROVED','CANCELLED') NOT NULL DEFAULT 'DRAFT',
+  `note`           VARCHAR(500) DEFAULT NULL,
+  `created_by`     BIGINT UNSIGNED DEFAULT NULL,
+  `approved_by`    BIGINT UNSIGNED DEFAULT NULL,
+  `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `approved_at`    DATETIME     DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_stock_opnames_number` (`opname_number`),
+  KEY `idx_stock_opnames_status` (`status`),
+  CONSTRAINT `fk_stock_opnames_created_by`
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_stock_opnames_approved_by`
+    FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `stock_opname_items` (
+  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `stock_opname_id` BIGINT UNSIGNED NOT NULL,
+  `ingredient_id`   BIGINT UNSIGNED NOT NULL,
+  -- Stok sistem saat baris opname dibuat. Disimpan sebagai snapshot karena
+  -- stok bisa berubah lagi sebelum opname disetujui.
+  `system_stock`    DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+  `physical_stock`  DECIMAL(12,3) DEFAULT NULL,
+  -- physical_stock - system_stock; 0 bila belum diisi.
+  `difference`      DECIMAL(12,3) NOT NULL DEFAULT 0.000,
+  `note`            VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_opname_items_opname_ingredient` (`stock_opname_id`, `ingredient_id`),
+  KEY `idx_opname_items_ingredient` (`ingredient_id`),
+  CONSTRAINT `fk_opname_items_opname`
+    FOREIGN KEY (`stock_opname_id`) REFERENCES `stock_opnames` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_opname_items_ingredient`
+    FOREIGN KEY (`ingredient_id`) REFERENCES `ingredients` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

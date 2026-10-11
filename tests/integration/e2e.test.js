@@ -18,8 +18,10 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const BASE = process.env.E2E_BASE_URL || 'http://localhost:3000';
-const API = `${BASE}/api`;
+const { startTestServer, createClient } = require('./helpers/server');
+const { login: loginOnce } = require('./helpers/auth');
+
+let client;
 
 // Kredensial dari seed
 const ADMIN = { email: 'admin@restaurant.test', password: 'Admin123!' };
@@ -34,36 +36,36 @@ const KITCHEN = { email: 'kitchen@restaurant.test', password: 'Kitchen123!' };
  * Panggil API dan kembalikan { status, body }.
  * Tidak melempar error supaya pengujian bisa memeriksa status 4xx.
  */
-async function call(method, path, { token, body } = {}) {
-  const response = await fetch(`${API}${path}`, {
-    method,
-    headers: {
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+let server;
 
-  let parsed = null;
-  try {
-    parsed = await response.json();
-  } catch {
-    parsed = null;
-  }
+test.before(async () => {
+  server = await startTestServer();
+  client = createClient(server.baseUrl);
+});
 
-  return { status: response.status, body: parsed, ok: response.ok };
+test.after(async () => {
+  if (server) await server.close();
+});
+
+const call = (...args) => client.call(...args);
+const get = (...args) => client.get(...args);
+const post = (...args) => client.post(...args);
+const patch = (...args) => client.patch(...args);
+const del = (...args) => client.delete(...args);
+
+/**
+ * Ambil array baris dari respons berpaginasi atau respons biasa.
+ */
+function rows(result) {
+  const data = result?.body?.data;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
 }
-
-const get = (path, token) => call('GET', path, { token });
-const post = (path, body, token) => call('POST', path, { token, body });
-const patch = (path, body, token) => call('PATCH', path, { token, body });
-const del = (path, token) => call('DELETE', path, { token });
 
 /** Login dan kembalikan { token, user }. */
 async function login(credentials) {
-  const result = await post('/auth/login', credentials);
-  assert.equal(result.status, 200, `Login ${credentials.email} gagal: ${result.body?.message}`);
-  return { token: result.body.data.accessToken, user: result.body.data.user };
+  return loginOnce(client, credentials);
 }
 
 // ---------------------------------------------------------------------------
@@ -71,7 +73,7 @@ async function login(credentials) {
 // ---------------------------------------------------------------------------
 
 test('health endpoint merespons dengan benar', async () => {
-  const response = await fetch(`${BASE}/health`);
+  const response = await fetch(`${server.baseUrl}/health`);
   const body = await response.json();
   assert.equal(response.status, 200);
   assert.equal(body.success, true);
@@ -164,7 +166,7 @@ test('gambar QR dapat diunduh sebagai PNG', async () => {
   const tables = await get('/tables?active=1', token);
   const tableId = (tables.body.data || [])[0].id;
 
-  const response = await fetch(`${API}/tables/${tableId}/qr.png`, {
+  const response = await fetch(`${server.baseUrl}/api/tables/${tableId}/qr.png`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 

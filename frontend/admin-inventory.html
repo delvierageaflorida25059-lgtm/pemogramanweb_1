@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory - Smart Restaurant</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar__brand">
+      <span class="appbar__logo">SR</span>
+      <span>Inventory</span>
+    </div>
+    <div class="appbar__nav">
+      <a class="appbar__link" href="/cashier.html">Kasir</a>
+      <a class="appbar__link" href="/kitchen.html">Dapur</a>
+      <a class="appbar__link" href="/dashboard.html">Dashboard</a>
+      <a class="appbar__link" href="/admin-menu.html">Menu</a>
+      <a class="appbar__link appbar__link--active" href="/admin-inventory.html">Inventory</a>
+      <a class="appbar__link" href="/admin-orders.html">Pesanan</a>
+      <a class="appbar__link" href="/admin-users.html">User</a>
+    </div>
+    <div class="appbar__user">
+      <span class="socket-indicator" id="socket-indicator" title="Koneksi realtime"></span>
+      <span id="user-label"></span>
+      <button type="button" class="btn btn--ghost btn--small" id="logout-button">Keluar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container container--wide">
+      <div class="page-header">
+        <div class="page-header__title">
+          <h1>Inventory &amp; Resep</h1>
+          <p class="page-header__subtitle">
+            Stok bahan baku, komposisi produk (BOM), dan riwayat pemakaian.
+            Stok berkurang otomatis saat pesanan dikonfirmasi.
+          </p>
+        </div>
+        <div class="page-header__actions">
+          <button type="button" class="btn btn--outline" id="refresh-button">Muat ulang</button>
+          <button type="button" class="btn btn--primary" id="new-ingredient-button">+ Bahan Baku</button>
+        </div>
+      </div>
+
+      <!-- Kartu ringkasan -->
+      <div class="stat-grid" id="stats"></div>
+
+      <div class="tabs" id="tabs">
+        <button class="tab tab--active" data-tab="ingredients">Bahan Baku</button>
+        <button class="tab" data-tab="recipes">Resep / BOM</button>
+        <button class="tab" data-tab="movements">Jurnal Mutasi</button>
+        <button class="tab" data-tab="opnames">Stock Opname</button>
+      </div>
+
+      <!-- Tab: Bahan baku -->
+      <section id="tab-ingredients" class="tab-panel tab-panel--active">
+        <div class="row row--between" style="margin-bottom: 0.75rem;">
+          <div class="row">
+            <input class="input" type="search" id="ingredient-search" placeholder="Cari bahan..."
+                   style="width: 220px;" />
+            <label class="checkbox">
+              <input type="checkbox" id="low-stock-only" />
+              <span>Hanya yang menipis</span>
+            </label>
+          </div>
+          <button type="button" class="btn btn--outline btn--small" id="receive-button">
+            Barang Masuk
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card__body card__body--flush">
+            <div class="table-wrapper">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Kode</th>
+                    <th>Nama Bahan</th>
+                    <th>Satuan</th>
+                    <th class="num">Stok</th>
+                    <th class="num">Minimum</th>
+                    <th class="num">Nilai</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="ingredient-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tab: Resep -->
+      <section id="tab-recipes" class="tab-panel">
+        <div class="row row--between" style="margin-bottom: 0.75rem;">
+          <p class="muted small" style="margin: 0;">
+            Produk tanpa resep tidak mengurangi stok bahan baku.
+          </p>
+          <button type="button" class="btn btn--outline btn--small" id="new-recipe-button">
+            + Resep untuk Produk
+          </button>
+        </div>
+        <div class="grid grid--2" id="recipe-grid"></div>
+      </section>
+
+      <!-- Tab: Jurnal -->
+      <section id="tab-movements" class="tab-panel">
+        <div class="row row--between" style="margin-bottom: 0.75rem;">
+          <div class="row">
+            <select class="select" id="movement-type" style="width: 190px;">
+              <option value="">Semua jenis</option>
+              <option value="SALE">Pemakaian / Penjualan</option>
+              <option value="PURCHASE">Pembelian</option>
+              <option value="ADJUSTMENT">Penyesuaian</option>
+              <option value="OPNAME">Stock Opname</option>
+              <option value="VOID">Pengembalian (Void)</option>
+              <option value="WASTE">Rusak / Terbuang</option>
+            </select>
+            <input class="input" type="date" id="movement-from" />
+            <span class="muted small">s.d.</span>
+            <input class="input" type="date" id="movement-to" />
+            <button type="button" class="btn btn--outline btn--small" id="movement-filter">Terapkan</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card__body card__body--flush">
+            <div class="table-wrapper">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Waktu</th>
+                    <th>Jenis</th>
+                    <th>Bahan</th>
+                    <th class="num">Masuk</th>
+                    <th class="num">Keluar</th>
+                    <th class="num">Stok akhir</th>
+                    <th>Referensi</th>
+                  </tr>
+                </thead>
+                <tbody id="movement-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="pagination" id="movement-pagination"></div>
+        </div>
+      </section>
+
+      <!-- Tab: Stock opname -->
+      <section id="tab-opnames" class="tab-panel">
+        <div class="row row--between" style="margin-bottom: 0.75rem;">
+          <p class="muted small" style="margin: 0;">
+            Hitung fisik di gudang, lalu setujui supaya stok sistem disesuaikan.
+          </p>
+          <button type="button" class="btn btn--primary btn--small" id="new-opname-button">
+            + Stock Opname
+          </button>
+        </div>
+
+        <div id="opname-detail"></div>
+
+        <div class="card">
+          <div class="card__body card__body--flush">
+            <div class="table-wrapper">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Nomor</th>
+                    <th>Status</th>
+                    <th class="num">Bahan</th>
+                    <th class="num">Terisi</th>
+                    <th>Dibuat</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="opname-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/js/admin-inventory.js"></script>
+  <script src="/js/pwa.js"></script>
+</body>
+</html>

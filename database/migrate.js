@@ -48,15 +48,25 @@ function askConfirmation(question) {
   });
 }
 
-async function migrate({ force = false } = {}) {
-  const sql = await fs.readFile(SCHEMA_PATH, 'utf8');
+/**
+ * @param {object} [options]
+ * @param {boolean} [options.force]   lewati konfirmasi interaktif
+ * @param {string}  [options.file]    berkas SQL alternatif (migrasi bertahap).
+ *                                    Bila diisi, mode destruktif dimatikan.
+ * @param {boolean} [options.destructive]  apakah berkas ini menghapus database
+ */
+async function migrate({ force = false, file = null, destructive = null } = {}) {
+  const sqlPath = file ? path.resolve(file) : SCHEMA_PATH;
+  const isDestructive = destructive === null ? !file : destructive;
+
+  const sql = await fs.readFile(sqlPath, 'utf8');
   const statements = splitStatements(sql);
 
   if (statements.length === 0) {
-    throw new Error(`Tidak ada statement SQL yang bisa dijalankan di ${SCHEMA_PATH}`);
+    throw new Error(`Tidak ada statement SQL yang bisa dijalankan di ${sqlPath}`);
   }
 
-  if (!force) {
+  if (!force && isDestructive) {
     console.log('PERINGATAN: migrasi akan MENGHAPUS database lama beserta seluruh isinya.');
     const answer = await askConfirmation('Lanjutkan? (ketik "ya" untuk lanjut): ');
     if (answer !== 'ya') {
@@ -64,6 +74,8 @@ async function migrate({ force = false } = {}) {
       process.exit(0);
     }
   }
+
+  console.log(`Menjalankan: ${path.relative(process.cwd(), sqlPath)}`);
 
   // Koneksi sengaja dibuat tanpa `database` supaya bisa membuat database baru.
   const connection = await mysql.createConnection({
@@ -82,7 +94,12 @@ async function migrate({ force = false } = {}) {
       executed += 1;
     }
     console.log(`Migrasi selesai. ${executed} statement berhasil dijalankan.`);
-    console.log(`Database "${process.env.DB_NAME || 'restaurant_management'}" siap dipakai.`);
+
+    if (isDestructive) {
+      console.log(`Database "${process.env.DB_NAME || 'restaurant_management'}" siap dipakai.`);
+    } else {
+      console.log('Database diperbarui tanpa kehilangan data lama.');
+    }
   } catch (error) {
     console.error('\nMigrasi GAGAL pada statement ke-' + executed);
     console.error(error.message);
@@ -93,7 +110,13 @@ async function migrate({ force = false } = {}) {
 }
 
 if (require.main === module) {
-  migrate({ force: process.argv.includes('--force') }).catch((error) => {
+  // Contoh: node database/migrate.js --file=database/migrations/002_phase4_inventory.sql
+  const fileArg = process.argv.find((arg) => arg.startsWith('--file='));
+
+  migrate({
+    force: process.argv.includes('--force'),
+    file: fileArg ? fileArg.slice('--file='.length) : null,
+  }).catch((error) => {
     console.error(error);
     process.exitCode = 1;
   });

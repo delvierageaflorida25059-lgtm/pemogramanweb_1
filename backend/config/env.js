@@ -84,6 +84,30 @@ const config = {
     taxPercent: num(process.env.TAX_PERCENT, 10),
     serviceChargePercent: num(process.env.SERVICE_CHARGE_PERCENT, 5),
   },
+
+  // -------------------------------------------------------------------------
+  // Inventory (Fase 4)
+  // -------------------------------------------------------------------------
+  inventory: {
+    /**
+     * Saat stok bahan baku tidak cukup, apakah order tetap diproses?
+     *
+     * true  = stok boleh menjadi minus, notifikasi dikirim (pilihan aman untuk
+     *         operasional karena order yang sudah dibayar tidak bisa ditolak)
+     * false = order ditolak dengan pesan jelas (konservatif, tapi bisa membuat
+     *         pelanggan yang sudah membayar tertahan)
+     */
+    allowNegativeStock: process.env.INVENTORY_ALLOW_NEGATIVE_STOCK !== 'false',
+
+    /**
+     * Mengubah products.stock_status menjadi UNAVAILABLE otomatis ketika stok
+     * bahannya habis. Default false supaya tidak mengubah perilaku lama.
+     */
+    autoToggleProduct: process.env.INVENTORY_AUTO_TOGGLE_PRODUCT === 'true',
+
+    // Ambang batas (%) di bawah minimum_stock yang memicu notifikasi.
+    lowStockThresholdPercent: num(process.env.INVENTORY_LOW_STOCK_PERCENT, 100),
+  },
 };
 
 module.exports = config;
