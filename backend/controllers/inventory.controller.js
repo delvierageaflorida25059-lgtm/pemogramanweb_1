@@ -88,6 +88,26 @@ async function receive(req, res) {
   });
 }
 
+/** POST /api/inventory/movements  -- bahan rusak (WASTE) atau retur (RETURN) */
+async function recordMovement(req, res) {
+  const result = await inventoryService.recordMovement(req.body, req.user);
+
+  setAudit(res, {
+    action: result.type === 'WASTE' ? 'RECORD_WASTE' : 'RECORD_RETURN',
+    entityType: 'ingredient',
+    entityId: result.ingredientId,
+    description: `${result.type} ${result.name} ${result.quantity} ${result.unit}`,
+    metadata: { stockBefore: result.stockBefore, stockAfter: result.stockAfter, note: req.body.note ?? null },
+  });
+
+  const label = result.type === 'WASTE' ? 'rusak' : 'dikembalikan';
+  return ok(res, {
+    data: result,
+    message: `${result.quantity} ${result.unit} ${result.name} dicatat ${label}. Stok kini ${result.stockAfter} ${result.unit}.`,
+    status: 201,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Stock opname
 // ---------------------------------------------------------------------------
@@ -190,6 +210,7 @@ module.exports = {
   checkLowStock,
   adjustStock,
   receive,
+  recordMovement,
   listOpnames,
   createOpname,
   detailOpname,

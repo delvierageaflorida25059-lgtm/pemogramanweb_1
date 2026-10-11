@@ -315,11 +315,11 @@ erDiagram
         BIGINT id PK
         VARCHAR name UK
         VARCHAR code UK
-        VARCHAR unit "kg/gram/ml/pcs/liter"
+        ENUM unit "gram/kg/ml/liter/pcs/pack/bottle/cans"
         DECIMAL stock
         DECIMAL minimum_stock
         DECIMAL unit_price
-        ENUM status "ACTIVE/INACTIVE"
+        TINYINT is_active
     }
 
     recipes {
@@ -333,17 +333,19 @@ erDiagram
         BIGINT id PK
         BIGINT recipe_id FK
         BIGINT ingredient_id FK
-        DECIMAL quantity
+        DECIMAL quantity "dalam satuan ingredients.unit"
         DECIMAL waste_percent
     }
 
     inventory_transactions {
         BIGINT id PK
         BIGINT ingredient_id FK
-        BIGINT order_id FK
+        BIGINT order_id FK "NULL, pengaman VOID dobel"
         ENUM type "PURCHASE/SALE/ADJUSTMENT/OPNAME/WASTE/VOID/RETURN"
         DECIMAL quantity_in
         DECIMAL quantity_out
+        DECIMAL stock_before "snapshot"
+        DECIMAL stock_after "snapshot"
         VARCHAR reference_type
         BIGINT reference_id
     }
@@ -361,7 +363,7 @@ erDiagram
         BIGINT stock_opname_id FK
         BIGINT ingredient_id FK
         DECIMAL system_stock
-        DECIMAL physical_stock
+        DECIMAL physical_stock "NULL selama DRAFT"
         DECIMAL difference
     }
 ```

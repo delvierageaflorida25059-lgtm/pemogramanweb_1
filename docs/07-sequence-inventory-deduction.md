@@ -117,40 +117,61 @@ mengadecimal jumlah dengan 3 angka (`DECIMAL(12,3)`) dan menyimpan
 
 ```text
 ingredients
-    id, name, code, unit (gram/ml/pcs),
+    id, code VARCHAR(30) UNIQUE, name VARCHAR(150),
+    unit ENUM('gram','kg','ml','liter','pcs','pack','bottle','cans'),
     stock DECIMAL(12,3), minimum_stock DECIMAL(12,3),
-    unit_price, supplier_id,
-    status (ACTIVE/INACTIVE), created_at
+    unit_price DECIMAL(15,2), supplier_id BIGINT UNSIGNED NULL,
+    is_active TINYINT(1), created_at, updated_at
 
 recipes
-    id, product_id, name,
-    yield_quantity DECIMAL(12,3),
-    note, created_at
+    id, product_id BIGINT UNSIGNED UNIQUE,
+    name VARCHAR(150), yield_quantity DECIMAL(12,3),
+    note VARCHAR(500), is_active TINYINT(1),
+    created_at, updated_at
 
 recipe_items
     id, recipe_id, ingredient_id,
-    quantity DECIMAL(12,3),
-    unit, waste_percent DECIMAL(5,2) DEFAULT 0
+    quantity DECIMAL(12,3),          -- dalam satuan ingredients.unit
+    waste_percent DECIMAL(5,2) DEFAULT 0,
+    note VARCHAR(255),
+    UNIQUE (recipe_id, ingredient_id)
 
 inventory_transactions
     id, ingredient_id,
-    type ENUM('PURCHASE','SALE','ADJUSTMENT','OPNAME','WASTE','VOID'),
+    type ENUM('PURCHASE','SALE','ADJUSTMENT','OPNAME','WASTE','VOID','RETURN'),
     quantity_in DECIMAL(12,3),
     quantity_out DECIMAL(12,3),
-    reference_type VARCHAR(30),
-    reference_id BIGINT UNSIGNED,
-    note VARCHAR(255),
-    created_by BIGINT UNSIGNED,
-    created_at
+    stock_before DECIMAL(12,3),      -- snapshot sebelum mutasi
+    stock_after DECIMAL(12,3),       -- snapshot sesudah mutasi
+    reference_type VARCHAR(30), reference_id BIGINT UNSIGNED,
+    order_id BIGINT UNSIGNED NULL,   -- pengaman agar VOID tidak dobel
+    note VARCHAR(255), created_by BIGINT UNSIGNED, created_at
 
 stock_opnames
-    id, opname_number, status (DRAFT/APPROVED/CANCELLED),
-    note, created_by, approved_by, created_at
+    id, opname_number VARCHAR(30) UNIQUE,
+    status ENUM('DRAFT','APPROVED','CANCELLED'),
+    note VARCHAR(500), created_by, approved_by,
+    created_at, approved_at
 
 stock_opname_items
     id, stock_opname_id, ingredient_id,
-    system_stock, physical_stock, difference
+    system_stock DECIMAL(12,3),
+    physical_stock DECIMAL(12,3) NULL,  -- NULL selama opname masih DRAFT
+    difference DECIMAL(12,3),
+    note VARCHAR(255)
 ```
+
+> **Catatan satuan:** `recipe_items` sengaja tidak punya kolom `unit`.
+> Quantity pada recipe selalu dinyatakan dalam satuan bahan induknya
+> (`ingredients.unit`), jadi tidak ada lagi yang bisa salah konversi. Saat
+> perbandingan atau penjumlahan antar bahan, `ingredient.service.js`
+> mengonversi ke satuan dasar lewat `toBaseUnit()` (`kg` -> `gram`,
+> `liter` -> `ml`), bukan menyimpan satuan ganda di database.
+
+> **Wajib dibaca sebelum mengubah skema:** `inventory_transactions.stock_before`
+> dan `stock_after` adalah snapshot, bukan kolom yang dihitung ulang. Nilainya
+> harus selalu cocok dengan `ingredients.stock` saat itu, dan itu dijaga oleh
+> test "stok bahan selalu cocok dengan jurnal mutasi".
 
 ## Perhitungan Waste
 
@@ -178,9 +199,14 @@ Contoh:
 | `SALE` | Keluar | Order masuk status `CONFIRMED` |
 | `ADJUSTMENT` | Masuk/Keluar | Penyesuaian manual oleh staff (`POST /api/inventory/adjustment`) |
 | `OPNAME` | Masuk/Keluar | Hasil hitung fisik saat opname disetujui |
-| `WASTE` | Keluar | Bahan hilang/rusak |
+| `WASTE` | Keluar | Bahan hilang/rusak (`POST /api/inventory/movements`) |
 | `VOID` | Balik | Order dibatalkan mengembalikan stok |
-| `RETURN` | Masuk | Retur bahan dari dapur |
+| `RETURN` | Masuk | Retur bahan dari dapur (`POST /api/inventory/movements`) |
+
+`SALE`, `VOID`, `OPNAME`, `PURCHASE`, dan `ADJUSTMENT` **tidak bisa** dibuat
+lewat endpoint mutasi karena masing-masing punya aturan sendiri. Endpoint
+`/movements` hanya menerima `WASTE` dan `RETURN`; Percobaan memakai tipe lain
+ditolak 400 dan tidak mengubah stok.
 
 ## Endpoint Inventory (Fase 4)
 
@@ -204,6 +230,7 @@ Semua endpoint berada di `/api/inventory` dan membutuhkan permission
 | POST | `/check-low-stock` | Pardon cek stok menipis |
 | POST | `/adjustment` | Penyesuaian stok manual |
 | POST | `/receive` | Penerimaan barang (PURCHASE) |
+| POST | `/movements` | Catat WASTE (rusak) atau RETURN (retur dapur) |
 | GET | `/opnames` | Daftar stock opname |
 | POST | `/opnames` | Buat draft opname |
 | GET | `/opnames/:id` | Detail opname |

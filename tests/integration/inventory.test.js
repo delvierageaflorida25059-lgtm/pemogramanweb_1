@@ -669,6 +669,115 @@ test('barang masuk dari supplier dicatat dengan tipe PURCHASE', async () => {
   assert.ok(rows(movements).length > 0, 'tidak ada jurnal PURCHASE');
 });
 
+test('bahan rusak dicatat dengan tipe WASTE dan mengurangi stok', async () => {
+  const { token } = await login(INVENTORY);
+  const ingredients = await get('/inventory/ingredients?limit=1', token);
+  const ingredient = rows(ingredients)[0];
+
+  const before = await readIngredient(token, ingredient.id);
+
+  const result = await post(
+    '/inventory/movements',
+    { ingredient_id: ingredient.id, type: 'WASTE', quantity: 2, note: 'uji bahan rusak' },
+    token
+  );
+  assert.equal(result.status, 201);
+
+  const after = await readIngredient(token, ingredient.id);
+  assert.ok(
+    Math.abs(after.stock - (before.stock - 2)) < 0.001,
+    `stok seharusnya turun 2, dari ${before.stock} jadi ${after.stock}`
+  );
+
+  const movements = await get(
+    `/inventory/movements?ingredient_id=${ingredient.id}&type=WASTE`,
+    token
+  );
+  const journal = rows(movements)[0];
+  assert.ok(journal, 'tidak ada jurnal WASTE');
+  assert.equal(Number(journal.quantityOut), 2);
+  assert.equal(Number(journal.quantityIn), 0);
+});
+
+test('retur bahan dari dapur dicatat dengan tipe RETURN dan menambah stok', async () => {
+  const { token } = await login(INVENTORY);
+  const ingredients = await get('/inventory/ingredients?limit=1', token);
+  const ingredient = rows(ingredients)[0];
+
+  const before = await readIngredient(token, ingredient.id);
+
+  const result = await post(
+    '/inventory/movements',
+    { ingredient_id: ingredient.id, type: 'RETURN', quantity: 4, note: 'uji retur dapur' },
+    token
+  );
+  assert.equal(result.status, 201);
+
+  const after = await readIngredient(token, ingredient.id);
+  assert.ok(Math.abs(after.stock - (before.stock + 4)) < 0.001);
+
+  const movements = await get(
+    `/inventory/movements?ingredient_id=${ingredient.id}&type=RETURN`,
+    token
+  );
+  const journal = rows(movements)[0];
+  assert.ok(journal, 'tidak ada jurnal RETURN');
+  assert.equal(Number(journal.quantityIn), 4);
+});
+
+test('jurnal SALE dan VOID tidak bisa dibuat manual lewat endpoint mutasi', async () => {
+  const { token } = await login(INVENTORY);
+  const ingredients = await get('/inventory/ingredients?limit=1', token);
+  const ingredient = rows(ingredients)[0];
+  const before = await readIngredient(token, ingredient.id);
+
+  for (const type of ['SALE', 'VOID', 'OPNAME', 'PURCHASE', 'ADJUSTMENT']) {
+    const result = await post(
+      '/inventory/movements',
+      { ingredient_id: ingredient.id, type, quantity: 1 },
+      token
+    );
+    assert.equal(result.status, 400, `tipe ${type} seharusnya ditolak di endpoint mutasi`);
+  }
+
+  const after = await readIngredient(token, ingredient.id);
+  assert.ok(
+    Math.abs(after.stock - before.stock) < 0.001,
+    'stok tidak boleh berubah karena semua percobaan ditolak'
+  );
+});
+
+test('mutasi bahan dengan jumlah nol ditolak', async () => {
+  const { token } = await login(INVENTORY);
+  const ingredients = await get('/inventory/ingredients?limit=1', token);
+  const ingredient = rows(ingredients)[0];
+
+  const result = await post(
+    '/inventory/movements',
+    { ingredient_id: ingredient.id, type: 'WASTE', quantity: 0 },
+    token
+  );
+
+  assert.equal(result.status, 400);
+});
+
+test('kasir tidak bisa mencatat bahan rusak', async () => {
+  const { token: cashierToken } = await login(CASHIER);
+  const { token: inventoryToken } = await login(INVENTORY);
+
+  // Kasir tidak punya inventory.view, jadi id diambil memakai akun inventory.
+  const ingredients = await get('/inventory/ingredients?limit=1', inventoryToken);
+  const ingredient = rows(ingredients)[0];
+
+  const result = await post(
+    '/inventory/movements',
+    { ingredient_id: ingredient.id, type: 'WASTE', quantity: 1 },
+    cashierToken
+  );
+
+  assert.equal(result.status, 403);
+});
+
 test('penyesuaian dengan jumlah nol ditolak', async () => {
   const { token } = await login(INVENTORY);
   const ingredients = await get('/inventory/ingredients?limit=1', token);

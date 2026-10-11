@@ -511,6 +511,103 @@ function openReceiveDialog() {
   });
 }
 
+/**
+ * Dialog bahan rusak (WASTE) atau retur dari dapur (RETURN).
+ *
+ * Berbeda dari penyesuaian manual, dua jenis ini punya tipe jurnal sendiri
+ * sehingga laporan mutasi bisa membedakan kerusakan dari koreksi hitung.
+ */
+function openMovementDialog(type = 'WASTE') {
+  if (state.ingredients.length === 0) {
+    toast('Buat bahan baku terlebih dahulu.', 'warning');
+    return;
+  }
+
+  const isWaste = type === 'WASTE';
+
+  const dialog = modal({
+    title: isWaste ? 'Catat Bahan Rusak' : 'Catat Retur Dapur',
+    size: 'sm',
+    content: `
+      <div class="field">
+        <span class="label">Jenis Mutasi</span>
+        <div class="payment-methods" id="movement-type-list">
+          <button type="button" class="payment-method payment-method--active" data-mtype="WASTE">
+            Rusak / Terbuang
+          </button>
+          <button type="button" class="payment-method" data-mtype="RETURN">
+            Retur Dapur
+          </button>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top: 1rem;">
+        <label class="label" for="movement-ing">Bahan Baku</label>
+        <select class="select" id="movement-ing">
+          ${state.ingredients
+            .filter((item) => item.isActive)
+            .map((item) => `<option value="${item.id}">${escapeHtml(item.code)} - ${escapeHtml(item.name)}</option>`)
+            .join('')}
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="label" for="movement-qty">Jumlah</label>
+        <input class="input" type="number" id="movement-qty" min="0" step="0.001" value="1" />
+      </div>
+
+      <div class="field">
+        <label class="label" for="movement-note">Keterangan</label>
+        <input class="input" type="text" id="movement-note" maxlength="255"
+               placeholder="${isWaste ? 'Contoh: ayam terbuang kadaluarsa' : 'Contoh: bahan dikembalikan dari dapur'}" />
+      </div>
+    `,
+    footer: `
+      <button type="button" class="btn btn--ghost" data-close>Batal</button>
+      <button type="button" class="btn btn--primary" data-save>Catat</button>
+    `,
+  });
+
+  const root = dialog.element;
+  let movementType = type;
+
+  $$('[data-mtype]', root).forEach((button) => {
+    button.addEventListener('click', () => {
+      $$('[data-mtype]', root).forEach((b) => b.classList.remove('payment-method--active'));
+      button.classList.add('payment-method--active');
+      movementType = button.dataset.mtype;
+    });
+  });
+
+  root.querySelector('[data-save]').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+
+    await withBusyButton(
+      button,
+      (async () => {
+        try {
+          const result = await api.post('/inventory/movements', {
+            ingredient_id: Number($('#movement-ing').value),
+            type: movementType,
+            quantity: Number($('#movement-qty').value),
+            note: $('#movement-note').value.trim(),
+          });
+
+          toast(
+            `${number(result.quantity, 3)} ${result.unit} ${result.name} dicatat. Stok kini ${number(result.stockAfter, 3)} ${result.unit}.`,
+            'success'
+          );
+          dialog.close();
+          await Promise.all([loadIngredients(), loadSummary(), loadMovements()]);
+        } catch (error) {
+          toast(error.message, 'error', 5000);
+        }
+      })(),
+      'Menyimpan...'
+    );
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Resep / BOM
 // ---------------------------------------------------------------------------
@@ -1206,6 +1303,8 @@ function wireEvents() {
 
   $('#new-ingredient-button').addEventListener('click', () => openIngredientForm());
   $('#receive-button').addEventListener('click', openReceiveDialog);
+  $('#waste-button').addEventListener('click', () => openMovementDialog('WASTE'));
+  $('#return-button').addEventListener('click', () => openMovementDialog('RETURN'));
   $('#new-opname-button').addEventListener('click', createOpname);
 
   $('#new-recipe-button').addEventListener('click', () => {

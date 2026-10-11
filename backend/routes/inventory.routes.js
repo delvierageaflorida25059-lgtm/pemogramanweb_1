@@ -187,6 +187,19 @@ router.post(
   inventoryController.receive
 );
 
+/** POST /api/inventory/movements  -- WASTE (bahan rusak) dan RETURN (retur dapur) */
+router.post(
+  '/movements',
+  requirePermission('inventory.manage'),
+  validate({
+    ingredient_id: { type: 'integer', required: true, min: 1, label: 'ID bahan' },
+    type: { type: 'enum', required: true, values: ['WASTE', 'RETURN'], label: 'Jenis mutasi' },
+    quantity: { type: 'number', required: true, min: 0, label: 'Jumlah' },
+    note: { type: 'string', max: 255, label: 'Keterangan' },
+  }),
+  inventoryController.recordMovement
+);
+
 // --- Stock opname ----------------------------------------------------------
 
 /** GET /api/inventory/opnames */

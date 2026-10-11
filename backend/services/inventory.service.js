@@ -494,6 +494,97 @@ async function recordPurchase(data, user = null) {
 }
 
 // ---------------------------------------------------------------------------
+// Waste and return
+// ---------------------------------------------------------------------------
+
+/**
+ * Catat bahan hilang (WASTE) atau dikembalikan dari dapur (RETURN).
+ *
+ * Fungsi ini melengkapi jenis jurnal yang belum punya jalur masuk. Tanpa
+ * endpoint, WASTE dan RETURN hanya ada di ENUM tapi tidak pernah terpakai,
+ * sehingga laporan mutasi tidak bisa membedakan bahan yang rusak dari
+ * penyesuaian yang dilakukan admin.
+ *
+ * @param {object} data
+ * @param {number} data.ingredient_id
+ * @param {'WASTE'|'RETURN'} data.type
+ * @param {number} data.quantity
+ * @param {string} [data.note]
+ * @param {object|null} user
+ * @returns {Promise<object>}
+ */
+async function recordMovement(data, user = null) {
+  const ingredientId = Number(data.ingredient_id);
+  const type = String(data.type || '').toUpperCase();
+  const quantity = round(Number(data.quantity), QTY_DECIMALS);
+
+  // Hanya dua jenis ini yang boleh lewat endpoint. SALE dan VOID tidak boleh
+  // dibuat manual karena keduanya harus mengikuti aturan order masing-masing.
+  const allowed = ['WASTE', 'RETURN'];
+  if (!allowed.includes(type)) {
+    throw ApiError.badRequest(
+      `Jenis mutasi harus salah satu dari: ${allowed.join(', ')}.`
+    );
+  }
+  if (!(quantity > 0)) {
+    throw ApiError.badRequest('Jumlah harus lebih besar dari nol.');
+  }
+
+  // WASTE mengurangi stok, RETURN menambahkannya.
+  const direction = type === 'WASTE' ? 'OUT' : 'IN';
+
+  const result = await withTransaction(async (conn) => {
+    const ingredient = await ingredientService.findByIdForUpdate(conn, ingredientId);
+    if (!ingredient) throw ApiError.notFound('Bahan baku tidak ditemukan.');
+
+    const stockBefore = ingredient.stock;
+    const stockAfter =
+      direction === 'IN'
+        ? round(stockBefore + quantity, QTY_DECIMALS)
+        : round(stockBefore - quantity, QTY_DECIMALS);
+
+    if (stockAfter < 0 && !config.inventory.allowNegativeStock) {
+      throw ApiError.conflict(
+        `Stok "${ingredient.name}" tidak cukup. Tersedia ${stockBefore} ${ingredient.unit}.`
+      );
+    }
+
+    await conn.execute(`UPDATE ingredients SET stock = ? WHERE id = ?`, [stockAfter, ingredientId]);
+
+    await conn.execute(
+      `INSERT INTO inventory_transactions
+         (ingredient_id, type, quantity_in, quantity_out, stock_before, stock_after,
+          reference_type, reference_id, note, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, 'manual', NULL, ?, ?)`,
+      [
+        ingredientId,
+        type,
+        direction === 'IN' ? quantity : 0,
+        direction === 'OUT' ? quantity : 0,
+        stockBefore,
+        stockAfter,
+        data.note ? String(data.note).slice(0, 255) : null,
+        user ? user.id : null,
+      ]
+    );
+
+    return {
+      ingredientId,
+      name: ingredient.name,
+      unit: ingredient.unit,
+      type,
+      direction,
+      quantity,
+      stockBefore,
+      stockAfter,
+    };
+  });
+
+  await afterStockChange(result);
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // Post-change hooks (notifications + realtime)
 // ---------------------------------------------------------------------------
 
@@ -611,6 +702,7 @@ module.exports = {
   restoreForOrder,
   adjustStock,
   recordPurchase,
+  recordMovement,
   checkLowStock,
   summary,
   afterStockChange,

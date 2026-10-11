@@ -44,6 +44,7 @@ MariaDB/MySQL · Socket.IO · PWA
 | **Inventory** | Master bahan baku, satuan & konversi, stok minimum, nilai stok, deteksi stok menipis |
 | **Recipe / BOM** | Resep per produk, waste persen, recik ingredient yang dipakai |
 | **Otomatis Stok** | Stok bahan keluar saat order `CONFIRMED`, kembali saat dibatalkan/refund |
+| **Mutasi Manual** | Barang masuk, bahan rusak (WASTE), retur dapur (RETURN), penyesuaian |
 | **Stock Opname** | Draft, isi hitung fisik, selisih otomatis, approve terapkan ke stok |
 | **Laporan** | Dashboard harian, grafik penjualan per jam, produk terlaris, sebaran metode bayar |
 | **Notifikasi** | Realtime via Socket.IO, tandai sudah dibaca |
@@ -157,7 +158,7 @@ Buka **http://localhost:3000**
 | `npm run seed` | Mengisi data awal (aman diulang) |
 | `npm run reset` | migrate --force + seed |
 | `npm test` | Unit test (tanpa server) |
-| `npm run test:e2e` | Integration test (62 test, menyalakan server sendiri) |
+| `npm run test:e2e` | Integration test (67 test, menyalakan server sendiri) |
 | `npm run lint` | Pemeriksaan kode dan secret |
 | `npm run icons` | Membuat ulang ikon PWA |
 
@@ -275,7 +276,7 @@ smart-restaurant-management/
 │
 ├── tests/
 │   ├── unit/                  money, rbac (28 test)
-│   └── integration/           e2e, smoke-pages, inventory (62 test)
+│   └── integration/           e2e, smoke-pages, inventory (67 test)
 │
 ├── docs/                      11 diagram Mermaid
 ├── scripts/
@@ -395,6 +396,7 @@ Semua endpoint butuh permission `inventory.view` (baca) atau
 | GET | `/api/inventory/movements` | Jurnal transaksi |
 | POST | `/api/inventory/adjustment` | Penyesuaian stok manual |
 | POST | `/api/inventory/receive` | Penerimaan barang dari supplier |
+| POST | `/api/inventory/movements` | Catat bahan rusak (WASTE) atau retur dapur (RETURN) |
 | GET | `/api/inventory/opnames` | Daftar stock opname |
 | POST | `/api/inventory/opnames/:id/approve` | Terapkan hasil opname ke stok |
 
@@ -410,7 +412,7 @@ GET /health
 
 ```bash
 npm test           # Unit test (28 test, tanpa server)
-npm run test:e2e   # Integration test (62 test, server dinyalakan otomatis)
+npm run test:e2e   # Integration test (67 test, server dinyalakan otomatis)
 npm run lint       # Lint + pemeriksaan secret
 ```
 
@@ -432,7 +434,7 @@ npm run test:e2e
 | `unit/rbac.test.js` | 8 | HasPermission, bypass ADMIN, tanpa wildcard |
 | `integration/e2e.test.js` | 27 | Seluruh alur bisnis dan keamanan |
 | `integration/smoke-pages.test.js` | 8 | Halaman, aset, manifest, service worker |
-| `integration/inventory.test.js` | 27 | Bahan, recipe, jurnal, opname, pengurangan stok |
+| `integration/inventory.test.js` | 32 | Bahan, recipe, jurnal, opname, pengurangan stok |
 
 Test integrasi mencakup skenario keamanan penting:
 
@@ -444,7 +446,7 @@ Test integrasi mencakup skenario keamanan penting:
 - Pembayaran melebihi sisa tagihan ditolak
 - Kembalian hanya untuk metode CASH
 - Stok bahan tidak bisa dikurangi langsung lewat API
-- Resep dengan satuan yang tidak cocok ditolak
+- Jurnal `SALE`/`VOID`/`OPNAME`/`PURCHASE`/`ADJUSTMENT` ditolak di endpoint mutasi
 - Quantity bahan negatif atau nol ditolak
 - Stok opname hanya bisa di-approve sekali
 
@@ -524,11 +526,9 @@ refund penuh. Lihat
 
 Sisa pekerjaan Fase 4 yang masih terbuka:
 
-- Konversi satuan antar bahan (`gramsToKg` sudah ada di service, belum dipakai
-  di form reseps)
 - Riwayat pergerakan stok per bahan dalam bentuk grafik
-- Retur bahan dari dapur memakai tipe `RETURN` (sudah ada di enum, belum ada
-  endpoint-nya)
+- Laporan harga bahan (HPP) per porsi produk yang dihitung dari recipe
+- Umur bahan (FIFO), menunggu Fase 5 saat ada purchase order
 
 ### Fase 5 - Procurement
 

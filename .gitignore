@@ -12,6 +12,7 @@ logs/
 *.log
 *.err
 *.out
+mysql-std*.txt
 npm-debug.log*
 
 # Runtime
